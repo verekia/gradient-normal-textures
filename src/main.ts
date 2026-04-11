@@ -148,22 +148,22 @@ function getDisplayDimensions(w: number, h: number): [number, number] {
 
 function drawToDisplayCanvas(canvas: HTMLCanvasElement, img: HTMLImageElement, w: number, h: number) {
   const [dw, dh] = getDisplayDimensions(w, h);
-  canvas.width = dw;
-  canvas.height = dh;
+  canvas.width = w;
+  canvas.height = h;
   canvas.style.width = `${dw}px`;
   canvas.style.height = `${dh}px`;
   const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(img, 0, 0, dw, dh);
+  ctx.drawImage(img, 0, 0);
 }
 
 function drawCanvasToDisplayCanvas(displayCanvas: HTMLCanvasElement, sourceCanvas: HTMLCanvasElement, w: number, h: number) {
   const [dw, dh] = getDisplayDimensions(w, h);
-  displayCanvas.width = dw;
-  displayCanvas.height = dh;
+  displayCanvas.width = w;
+  displayCanvas.height = h;
   displayCanvas.style.width = `${dw}px`;
   displayCanvas.style.height = `${dh}px`;
   const ctx = displayCanvas.getContext('2d')!;
-  ctx.drawImage(sourceCanvas, 0, 0, dw, dh);
+  ctx.drawImage(sourceCanvas, 0, 0);
 }
 
 // --- Gradient map ---
@@ -186,17 +186,18 @@ function updateGradientMap() {
 
   // 3x3 tiled (based on toggle)
   const tileSrc = tiledMode === 'pca' ? pcaSrcCanvas : lumSrcCanvas;
-  const [tileW, tileH] = getDisplayDimensions(currentResult.width, currentResult.height);
+  const { width: fullW, height: fullH } = currentResult;
+  const [displayW, displayH] = getDisplayDimensions(fullW, fullH);
   const tilesX = 3;
   const tilesY = 3;
-  canvasGradient.width = tileW * tilesX;
-  canvasGradient.height = tileH * tilesY;
-  canvasGradient.style.width = `${tileW * tilesX}px`;
-  canvasGradient.style.height = `${tileH * tilesY}px`;
+  canvasGradient.width = fullW * tilesX;
+  canvasGradient.height = fullH * tilesY;
+  canvasGradient.style.width = `${displayW * tilesX}px`;
+  canvasGradient.style.height = `${displayH * tilesY}px`;
   const ctx = canvasGradient.getContext('2d')!;
   for (let y = 0; y < tilesY; y++) {
     for (let x = 0; x < tilesX; x++) {
-      ctx.drawImage(tileSrc, x * tileW, y * tileH, tileW, tileH);
+      ctx.drawImage(tileSrc, x * fullW, y * fullH);
     }
   }
 }
