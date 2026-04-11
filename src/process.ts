@@ -5,6 +5,18 @@ import { computePCA } from './pca';
 
 const MAX_PCA_SAMPLES = 100_000;
 const ALPHA_THRESHOLD = 8;
+const PERCENTILE_LOW = 0.001;
+const PERCENTILE_HIGH = 0.999;
+
+/** Return the values at the low and high percentiles from a Float64Array subset. */
+function percentileBounds(values: Float64Array, indices: number[]): [number, number] {
+  const sorted = new Float64Array(indices.length);
+  for (let i = 0; i < indices.length; i++) sorted[i] = values[indices[i]];
+  sorted.sort();
+  const lo = sorted[Math.floor(PERCENTILE_LOW * (sorted.length - 1))];
+  const hi = sorted[Math.ceil(PERCENTILE_HIGH * (sorted.length - 1))];
+  return [lo, hi];
+}
 
 export interface ProcessedImage {
   /** Original image dimensions */
@@ -144,38 +156,38 @@ export function processPixels(data: Uint8ClampedArray, width: number, height: nu
     }
   }
 
-  // Sign convention: min projection should be the darker pixel (lower L*)
+  // Determine which projection direction is dark vs light
   const minPixelIdx = opaqueIndices[minIdx] * 4;
   const maxPixelIdx = opaqueIndices[maxIdx] * 4;
   const [minL] = srgbToLab(data[minPixelIdx], data[minPixelIdx + 1], data[minPixelIdx + 2]);
   const [maxL] = srgbToLab(data[maxPixelIdx], data[maxPixelIdx + 1], data[maxPixelIdx + 2]);
 
-  let flip = false;
-  if (minL > maxL) {
-    flip = true;
-    // Swap min/max
-    const tmpProj = minProj;
-    minProj = maxProj;
-    maxProj = tmpProj;
-    const tmpIdx = minIdx;
-    minIdx = maxIdx;
-    maxIdx = tmpIdx;
-  }
+  const darkIdx = minL <= maxL ? minIdx : maxIdx;
+  const lightIdx = minL <= maxL ? maxIdx : minIdx;
 
   // Handle degenerate case (single color)
-  const range = maxProj - minProj;
-  const isDegenerate = pca.eigenvalue < 1e-6 || range < 1e-10;
+  const isDegenerate = pca.eigenvalue < 1e-6 || Math.abs(projections[darkIdx] - projections[lightIdx]) < 1e-10;
 
-  // Normalize projections to [0, 1] and store in grayscale map
+  // Store raw projections in grayscaleMap temporarily for percentile computation
   for (let i = 0; i < opaqueIndices.length; i++) {
-    const proj = flip ? -projections[i] : projections[i];
-    const g = isDegenerate ? 0.5 : (proj - (flip ? -maxProj : minProj)) / range;
+    grayscaleMap[opaqueIndices[i]] = projections[i];
+  }
+
+  // Use percentile bounds for robust normalization (outliers don't compress the range)
+  const [pLo, pHi] = percentileBounds(grayscaleMap, opaqueIndices);
+  const darkBound = minL <= maxL ? pLo : pHi;
+  const lightBound = minL <= maxL ? pHi : pLo;
+  const projRange = lightBound - darkBound;
+
+  // Normalize projections to [0, 1] and clamp
+  for (let i = 0; i < opaqueIndices.length; i++) {
+    const g = isDegenerate ? 0.5 : (projections[i] - darkBound) / projRange;
     grayscaleMap[opaqueIndices[i]] = Math.max(0, Math.min(1, g));
   }
 
-  // Extract endpoint colors (original RGB of min/max projection pixels)
-  const darkPixelIdx = opaqueIndices[minIdx] * 4;
-  const lightPixelIdx = opaqueIndices[maxIdx] * 4;
+  // Extract endpoint colors (original RGB of dark/light projection pixels)
+  const darkPixelIdx = opaqueIndices[darkIdx] * 4;
+  const lightPixelIdx = opaqueIndices[lightIdx] * 4;
 
   const darkRgb: [number, number, number] = [data[darkPixelIdx], data[darkPixelIdx + 1], data[darkPixelIdx + 2]];
   const lightRgb: [number, number, number] = [data[lightPixelIdx], data[lightPixelIdx + 1], data[lightPixelIdx + 2]];
@@ -197,17 +209,14 @@ export function processPixels(data: Uint8ClampedArray, width: number, height: nu
     if (lum > maxLum) maxLum = lum;
   }
 
-  // Normalize to [0,1] and apply sRGB gamma so values are in perceptual space
-  // (matching the PCA map which is derived from perceptual Lab space)
+  // Normalize to [0,1] using percentile bounds
   const lumRange = maxLum - minLum;
   if (lumRange > 1e-10) {
+    const [lumLo, lumHi] = percentileBounds(luminanceMap, opaqueIndices);
+    const lumNormRange = lumHi - lumLo;
     for (let i = 0; i < opaqueIndices.length; i++) {
       const idx = opaqueIndices[i];
-      const normalized = (luminanceMap[idx] - minLum) / lumRange;
-      // Linear → perceptual (sRGB transfer function)
-      luminanceMap[idx] = normalized <= 0.0031308
-        ? 12.92 * normalized
-        : 1.055 * Math.pow(normalized, 1 / 2.4) - 0.055;
+      luminanceMap[idx] = Math.max(0, Math.min(1, (luminanceMap[idx] - lumLo) / lumNormRange));
     }
   } else {
     for (let i = 0; i < opaqueIndices.length; i++) {
