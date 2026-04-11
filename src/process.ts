@@ -1,6 +1,6 @@
 // Image processing pipeline: load → Lab conversion → PCA → grayscale → gradient map
 
-import { srgbToLab, srgbToLinear, linearToSrgb, hexToRgb, rgbToHex } from './color';
+import { srgbToLab, hexToRgb, rgbToHex } from './color';
 import { computePCA } from './pca';
 
 const MAX_PCA_SAMPLES = 100_000;
@@ -220,7 +220,8 @@ export function buildGrayscaleImage(result: ProcessedImage): ImageData {
 
 /**
  * Build a gradient-mapped ImageData from the grayscale map and two colors.
- * Lerping is done in linear RGB to avoid muddy mid-tones.
+ * Interpolation is done in sRGB space to match the grayscale preview
+ * (whose values are perceptual, derived from Lab-space PCA projections).
  */
 export function buildGradientMappedImage(
   result: ProcessedImage,
@@ -234,10 +235,6 @@ export function buildGradientMappedImage(
   const [aR, aG, aB] = hexToRgb(colorAHex);
   const [bR, bG, bB] = hexToRgb(colorBHex);
 
-  // Convert to linear RGB for proper interpolation
-  const aLin = [srgbToLinear(aR), srgbToLinear(aG), srgbToLinear(aB)];
-  const bLin = [srgbToLinear(bR), srgbToLinear(bG), srgbToLinear(bB)];
-
   for (let i = 0; i < width * height; i++) {
     const g = grayscaleMap[i];
     if (isNaN(g)) {
@@ -246,15 +243,9 @@ export function buildGradientMappedImage(
       out[i * 4 + 2] = 0;
       out[i * 4 + 3] = 0;
     } else {
-      // Lerp in linear RGB
-      const lr = aLin[0] + (bLin[0] - aLin[0]) * g;
-      const lg = aLin[1] + (bLin[1] - aLin[1]) * g;
-      const lb = aLin[2] + (bLin[2] - aLin[2]) * g;
-
-      // Convert back to sRGB
-      out[i * 4] = linearToSrgb(lr);
-      out[i * 4 + 1] = linearToSrgb(lg);
-      out[i * 4 + 2] = linearToSrgb(lb);
+      out[i * 4] = Math.round(aR + (bR - aR) * g);
+      out[i * 4 + 1] = Math.round(aG + (bG - aG) * g);
+      out[i * 4 + 2] = Math.round(aB + (bB - aB) * g);
       out[i * 4 + 3] = originalData[i * 4 + 3];
     }
   }

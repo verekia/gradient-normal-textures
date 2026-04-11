@@ -136,11 +136,12 @@ async function handleFile(file: File) {
 
 // --- Display helpers ---
 
+const MAX_PREVIEW_SIZE = 256;
+
 function getDisplayDimensions(w: number, h: number): [number, number] {
-  const maxW = 512;
-  if (w <= maxW) return [w, h];
-  const scale = maxW / w;
-  return [maxW, Math.round(h * scale)];
+  if (w <= MAX_PREVIEW_SIZE) return [w, h];
+  const scale = MAX_PREVIEW_SIZE / w;
+  return [MAX_PREVIEW_SIZE, Math.round(h * scale)];
 }
 
 function drawToDisplayCanvas(canvas: HTMLCanvasElement, img: HTMLImageElement, w: number, h: number) {
@@ -173,7 +174,21 @@ function updateGradientMap() {
 
   const imageData = buildGradientMappedImage(currentResult, colorA, colorB);
   const srcCanvas = imageDataToCanvas(imageData);
-  drawCanvasToDisplayCanvas(canvasGradient, srcCanvas, currentResult.width, currentResult.height);
+
+  // Draw as 3x3 tiled preview
+  const [tileW, tileH] = getDisplayDimensions(currentResult.width, currentResult.height);
+  const tilesX = 3;
+  const tilesY = 3;
+  canvasGradient.width = tileW * tilesX;
+  canvasGradient.height = tileH * tilesY;
+  canvasGradient.style.width = `${tileW * tilesX}px`;
+  canvasGradient.style.height = `${tileH * tilesY}px`;
+  const ctx = canvasGradient.getContext('2d')!;
+  for (let y = 0; y < tilesY; y++) {
+    for (let x = 0; x < tilesX; x++) {
+      ctx.drawImage(srcCanvas, x * tileW, y * tileH, tileW, tileH);
+    }
+  }
 }
 
 pickerDark.addEventListener('input', updateGradientMap);
