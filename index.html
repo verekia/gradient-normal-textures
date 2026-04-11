@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PCA Texture Gradient Map</title>
+  </head>
+  <body>
+    <div id="app">
+      <h1>Texture Gradient Map</h1>
+
+      <!-- 1. Drop zone -->
+      <div id="drop-zone" tabindex="0">
+        <p>Drop a texture here or click to select.</p>
+        <p class="formats">PNG, JPG, WebP</p>
+        <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp" />
+      </div>
+      <div id="error-message" class="hidden"></div>
+
+      <!-- 2. Original image -->
+      <section id="section-original" class="hidden">
+        <h2>Original</h2>
+        <canvas id="canvas-original"></canvas>
+      </section>
+
+      <!-- 3. Grayscale (PCA projection) -->
+      <section id="section-grayscale" class="hidden">
+        <div id="images-row">
+          <div id="original-wrap">
+            <h2>Original</h2>
+            <canvas id="canvas-original-side"></canvas>
+          </div>
+          <div id="grayscale-wrap">
+            <h2>Grayscale (PCA)</h2>
+            <canvas id="canvas-grayscale"></canvas>
+          </div>
+        </div>
+        <div id="endpoints">
+          <div class="endpoint">
+            <span class="swatch" id="swatch-dark"></span>
+            <span>Extracted dark: <code id="dark-hex"></code></span>
+          </div>
+          <div class="endpoint">
+            <span class="swatch" id="swatch-light"></span>
+            <span>Extracted light: <code id="light-hex"></code></span>
+          </div>
+        </div>
+        <button id="btn-download-grayscale">Download grayscale PNG</button>
+      </section>
+
+      <!-- 4. Gradient mapped output -->
+      <section id="section-gradient" class="hidden">
+        <h2>Gradient Mapped Output</h2>
+        <div id="color-pickers">
+          <label>
+            Color A (dark)
+            <input type="color" id="picker-dark" />
+          </label>
+          <label>
+            Color B (light)
+            <input type="color" id="picker-light" />
+          </label>
+        </div>
+        <canvas id="canvas-gradient"></canvas>
+        <button id="btn-download-gradient">Download recolored PNG</button>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
