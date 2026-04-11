@@ -1,6 +1,6 @@
 // Image processing pipeline: load → Lab conversion → PCA → grayscale → gradient map
 
-import { srgbToLab, hexToRgb, rgbToHex } from './color';
+import { srgbToLab, srgbToLinear, hexToRgb, rgbToHex } from './color';
 import { computePCA } from './pca';
 
 const MAX_PCA_SAMPLES = 100_000;
@@ -12,8 +12,10 @@ export interface ProcessedImage {
   height: number;
   /** Original RGBA pixel data */
   originalData: Uint8ClampedArray;
-  /** Per-pixel normalized grayscale value [0,1], length = width*height. NaN for transparent pixels. */
+  /** Per-pixel normalized PCA grayscale value [0,1], length = width*height. NaN for transparent pixels. */
   grayscaleMap: Float64Array;
+  /** Per-pixel normalized luminance value [0,1], length = width*height. NaN for transparent pixels. */
+  luminanceMap: Float64Array;
   /** Extracted dark endpoint color as hex */
   darkHex: string;
   /** Extracted light endpoint color as hex */
@@ -178,11 +180,47 @@ export function processPixels(data: Uint8ClampedArray, width: number, height: nu
   const darkRgb: [number, number, number] = [data[darkPixelIdx], data[darkPixelIdx + 1], data[darkPixelIdx + 2]];
   const lightRgb: [number, number, number] = [data[lightPixelIdx], data[lightPixelIdx + 1], data[lightPixelIdx + 2]];
 
+  // Compute normalized luminance map (Rec. 709 relative luminance in linear space)
+  const luminanceMap = new Float64Array(totalPixels);
+  luminanceMap.fill(NaN);
+  let minLum = Infinity;
+  let maxLum = -Infinity;
+
+  for (let i = 0; i < opaqueIndices.length; i++) {
+    const pi = opaqueIndices[i] * 4;
+    const lr = srgbToLinear(data[pi]);
+    const lg = srgbToLinear(data[pi + 1]);
+    const lb = srgbToLinear(data[pi + 2]);
+    const lum = 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+    luminanceMap[opaqueIndices[i]] = lum;
+    if (lum < minLum) minLum = lum;
+    if (lum > maxLum) maxLum = lum;
+  }
+
+  // Normalize to [0,1] and apply sRGB gamma so values are in perceptual space
+  // (matching the PCA map which is derived from perceptual Lab space)
+  const lumRange = maxLum - minLum;
+  if (lumRange > 1e-10) {
+    for (let i = 0; i < opaqueIndices.length; i++) {
+      const idx = opaqueIndices[i];
+      const normalized = (luminanceMap[idx] - minLum) / lumRange;
+      // Linear → perceptual (sRGB transfer function)
+      luminanceMap[idx] = normalized <= 0.0031308
+        ? 12.92 * normalized
+        : 1.055 * Math.pow(normalized, 1 / 2.4) - 0.055;
+    }
+  } else {
+    for (let i = 0; i < opaqueIndices.length; i++) {
+      luminanceMap[opaqueIndices[i]] = 0.5;
+    }
+  }
+
   return {
     width,
     height,
     originalData: data,
     grayscaleMap,
+    luminanceMap,
     darkHex: rgbToHex(...darkRgb),
     lightHex: rgbToHex(...lightRgb),
     darkRgb,
@@ -227,8 +265,10 @@ export function buildGradientMappedImage(
   result: ProcessedImage,
   colorAHex: string,
   colorBHex: string,
+  map?: Float64Array,
 ): ImageData {
-  const { width, height, grayscaleMap, originalData } = result;
+  const { width, height, originalData } = result;
+  const sourceMap = map ?? result.grayscaleMap;
   const imageData = new ImageData(width, height);
   const out = imageData.data;
 
@@ -236,7 +276,7 @@ export function buildGradientMappedImage(
   const [bR, bG, bB] = hexToRgb(colorBHex);
 
   for (let i = 0; i < width * height; i++) {
-    const g = grayscaleMap[i];
+    const g = sourceMap[i];
     if (isNaN(g)) {
       out[i * 4] = 0;
       out[i * 4 + 1] = 0;

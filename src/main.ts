@@ -29,12 +29,17 @@ const btnDownloadGrayscale = document.getElementById('btn-download-grayscale')!;
 const sectionGradient = document.getElementById('section-gradient')!;
 const pickerDark = document.getElementById('picker-dark') as HTMLInputElement;
 const pickerLight = document.getElementById('picker-light') as HTMLInputElement;
+const canvasLuminance = document.getElementById('canvas-luminance') as HTMLCanvasElement;
+const canvasPcaSingle = document.getElementById('canvas-pca-single') as HTMLCanvasElement;
+const btnTiledPca = document.getElementById('btn-tiled-pca')!;
+const btnTiledLum = document.getElementById('btn-tiled-lum')!;
 const canvasGradient = document.getElementById('canvas-gradient') as HTMLCanvasElement;
 const btnDownloadGradient = document.getElementById('btn-download-gradient')!;
 
 // State
 let currentResult: ProcessedImage | null = null;
 let fullResGrayscaleImageData: ImageData | null = null;
+let tiledMode: 'pca' | 'luminance' = 'pca';
 
 // --- Drop zone handling ---
 
@@ -172,10 +177,18 @@ function updateGradientMap() {
   const colorA = pickerDark.value;
   const colorB = pickerLight.value;
 
-  const imageData = buildGradientMappedImage(currentResult, colorA, colorB);
-  const srcCanvas = imageDataToCanvas(imageData);
+  // Luminance-based gradient map (single tile)
+  const lumImageData = buildGradientMappedImage(currentResult, colorA, colorB, currentResult.luminanceMap);
+  const lumSrcCanvas = imageDataToCanvas(lumImageData);
+  drawCanvasToDisplayCanvas(canvasLuminance, lumSrcCanvas, currentResult.width, currentResult.height);
 
-  // Draw as 3x3 tiled preview
+  // PCA-based gradient map (single tile)
+  const pcaImageData = buildGradientMappedImage(currentResult, colorA, colorB);
+  const pcaSrcCanvas = imageDataToCanvas(pcaImageData);
+  drawCanvasToDisplayCanvas(canvasPcaSingle, pcaSrcCanvas, currentResult.width, currentResult.height);
+
+  // 3x3 tiled (based on toggle)
+  const tileSrc = tiledMode === 'pca' ? pcaSrcCanvas : lumSrcCanvas;
   const [tileW, tileH] = getDisplayDimensions(currentResult.width, currentResult.height);
   const tilesX = 3;
   const tilesY = 3;
@@ -186,13 +199,27 @@ function updateGradientMap() {
   const ctx = canvasGradient.getContext('2d')!;
   for (let y = 0; y < tilesY; y++) {
     for (let x = 0; x < tilesX; x++) {
-      ctx.drawImage(srcCanvas, x * tileW, y * tileH, tileW, tileH);
+      ctx.drawImage(tileSrc, x * tileW, y * tileH, tileW, tileH);
     }
   }
 }
 
 pickerDark.addEventListener('input', updateGradientMap);
 pickerLight.addEventListener('input', updateGradientMap);
+
+btnTiledPca.addEventListener('click', () => {
+  tiledMode = 'pca';
+  btnTiledPca.classList.add('active');
+  btnTiledLum.classList.remove('active');
+  updateGradientMap();
+});
+
+btnTiledLum.addEventListener('click', () => {
+  tiledMode = 'luminance';
+  btnTiledLum.classList.add('active');
+  btnTiledPca.classList.remove('active');
+  updateGradientMap();
+});
 
 // --- Download buttons ---
 
@@ -206,7 +233,8 @@ btnDownloadGradient.addEventListener('click', () => {
   if (!currentResult) return;
   const colorA = pickerDark.value;
   const colorB = pickerLight.value;
-  const imageData = buildGradientMappedImage(currentResult, colorA, colorB);
+  const map = tiledMode === 'luminance' ? currentResult.luminanceMap : undefined;
+  const imageData = buildGradientMappedImage(currentResult, colorA, colorB, map);
   const canvas = imageDataToCanvas(imageData);
   downloadCanvas(canvas, 'recolored.png');
 });

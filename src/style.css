@@ -89,7 +89,8 @@ section {
 }
 
 /* Side-by-side images layout */
-#images-row {
+#images-row,
+#comparison-row {
   display: flex;
   gap: 2rem;
   flex-wrap: wrap;
@@ -162,6 +163,45 @@ code {
   background: none;
   cursor: pointer;
   padding: 2px;
+}
+
+/* Tiled section header */
+#tiled-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+#tiled-header h2 {
+  margin-bottom: 0;
+}
+
+#tiled-toggle {
+  display: flex;
+  gap: 0;
+}
+
+.toggle-btn {
+  margin-top: 0;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: 0;
+  border: 1px solid #555;
+}
+
+.toggle-btn:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.toggle-btn:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+
+.toggle-btn.active {
+  background: #555;
+  color: #fff;
 }
 
 /* Buttons */
