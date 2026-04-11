@@ -231,13 +231,14 @@ export function processPixels(data: Uint8ClampedArray, width: number, height: nu
 /**
  * Build a grayscale ImageData from the grayscale map.
  */
-export function buildGrayscaleImage(result: ProcessedImage): ImageData {
-  const { width, height, grayscaleMap, originalData } = result;
+export function buildGrayscaleImage(result: ProcessedImage, map?: Float64Array): ImageData {
+  const { width, height, originalData } = result;
+  const sourceMap = map ?? result.grayscaleMap;
   const imageData = new ImageData(width, height);
   const out = imageData.data;
 
   for (let i = 0; i < width * height; i++) {
-    const g = grayscaleMap[i];
+    const g = sourceMap[i];
     if (isNaN(g)) {
       // Transparent pixel — pass through original alpha
       out[i * 4] = 0;

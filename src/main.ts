@@ -13,12 +13,11 @@ import {
 const dropZone = document.getElementById('drop-zone')!;
 const fileInput = document.getElementById('file-input') as HTMLInputElement;
 const errorMessage = document.getElementById('error-message')!;
-
-const sectionOriginal = document.getElementById('section-original')!;
+const originalWrap = document.getElementById('original-wrap')!;
 const canvasOriginal = document.getElementById('canvas-original') as HTMLCanvasElement;
 
 const sectionGrayscale = document.getElementById('section-grayscale')!;
-const canvasOriginalSide = document.getElementById('canvas-original-side') as HTMLCanvasElement;
+const canvasGrayscaleLum = document.getElementById('canvas-grayscale-lum') as HTMLCanvasElement;
 const canvasGrayscale = document.getElementById('canvas-grayscale') as HTMLCanvasElement;
 const swatchDark = document.getElementById('swatch-dark')!;
 const swatchLight = document.getElementById('swatch-light')!;
@@ -69,7 +68,7 @@ fileInput.addEventListener('change', () => {
 function showError(msg: string) {
   errorMessage.textContent = msg;
   errorMessage.classList.remove('hidden');
-  sectionOriginal.classList.add('hidden');
+  originalWrap.classList.add('hidden');
   sectionGrayscale.classList.add('hidden');
   sectionGradient.classList.add('hidden');
 }
@@ -91,9 +90,9 @@ async function handleFile(file: File) {
     const img = await loadImage(file);
     const { data, width, height } = getPixelData(img);
 
-    // Show original (standalone, before processing)
+    // Show original next to drop zone
     drawToDisplayCanvas(canvasOriginal, img, width, height);
-    sectionOriginal.classList.remove('hidden');
+    originalWrap.classList.remove('hidden');
     sectionGrayscale.classList.add('hidden');
     sectionGradient.classList.add('hidden');
 
@@ -107,16 +106,14 @@ async function handleFile(file: File) {
 
     currentResult = result;
 
-    // Hide standalone original, show side-by-side
-    sectionOriginal.classList.add('hidden');
-
-    // Draw original in the side-by-side row
-    drawToDisplayCanvas(canvasOriginalSide, img, width, height);
-
-    // Build and draw grayscale
+    // Build and draw grayscale (Luminance + PCA)
     fullResGrayscaleImageData = buildGrayscaleImage(result);
     const gsCanvas = imageDataToCanvas(fullResGrayscaleImageData);
     drawCanvasToDisplayCanvas(canvasGrayscale, gsCanvas, width, height);
+
+    const lumGsImageData = buildGrayscaleImage(result, result.luminanceMap);
+    const lumGsCanvas = imageDataToCanvas(lumGsImageData);
+    drawCanvasToDisplayCanvas(canvasGrayscaleLum, lumGsCanvas, width, height);
 
     // Show endpoint colors
     swatchDark.style.backgroundColor = result.darkHex;
