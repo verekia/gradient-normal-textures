@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Texture Gradient Map</title>
+    <title>Luminance extraction + normal packer for dynamic recoloring</title>
   </head>
   <body>
     <div id="app">
-      <h1>Texture Gradient Map</h1>
+      <h1>Luminance extraction + normal packer for dynamic recoloring</h1>
 
       <!-- 1. Drop zones + original previews -->
       <div id="drop-row">
@@ -76,10 +76,39 @@
             <input type="color" id="picker-light" value="#ffffff" />
           </label>
         </div>
-        <div>
-          <h2>Luminance</h2>
-          <canvas id="canvas-luminance"></canvas>
+        <div id="recolored-and-3d-row">
+          <div id="recolored-wrap">
+            <h2>Recolored</h2>
+            <canvas id="canvas-luminance"></canvas>
+          </div>
+
+          <section id="section-3d" class="hidden">
+            <h2 id="three-heading">3D Preview</h2>
+            <div id="three-controls">
+              <label>
+                <span class="clamp-label">Texture size</span>
+                <input type="range" id="tex-size" min="0.5" max="10" step="0.1" value="2" />
+                <span class="clamp-value" id="tex-size-value">2.0×</span>
+              </label>
+              <label>
+                <span class="clamp-label">Light</span>
+                <input type="range" id="light-intensity" min="0" max="10" step="0.05" value="5" />
+                <span class="clamp-value" id="light-intensity-value">5.00</span>
+              </label>
+              <label>
+                <span class="clamp-label">Normal scale</span>
+                <input type="range" id="normal-scale" min="0" max="5" step="0.05" value="1" />
+                <span class="clamp-value" id="normal-scale-value">1.00</span>
+              </label>
+              <div id="material-toggle">
+                <button id="btn-mat-standard" class="toggle-btn active" type="button">Standard</button>
+                <button id="btn-mat-lambert" class="toggle-btn" type="button">Lambert</button>
+              </div>
+            </div>
+            <div id="three-container"></div>
+          </section>
         </div>
+
         <h2 id="tiled-heading">Tiled</h2>
         <canvas id="canvas-gradient"></canvas>
       </section>

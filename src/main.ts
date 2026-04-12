@@ -10,6 +10,15 @@ import {
   imageDataToCanvas,
   type ProcessedImage,
 } from './process';
+import {
+  initThreeScene,
+  setColorTexture,
+  setNormalTexture,
+  setTextureRepeat,
+  setMaterialType,
+  setDirectionalIntensity,
+  setNormalScale,
+} from './three-scene';
 
 // DOM elements — texture drop
 const dropZoneWrap = document.getElementById('drop-zone-wrap')!;
@@ -41,12 +50,35 @@ const pickerLight = document.getElementById('picker-light') as HTMLInputElement;
 const canvasLuminance = document.getElementById('canvas-luminance') as HTMLCanvasElement;
 const canvasGradient = document.getElementById('canvas-gradient') as HTMLCanvasElement;
 
+const section3d = document.getElementById('section-3d')!;
+const threeContainer = document.getElementById('three-container')!;
+const texSize = document.getElementById('tex-size') as HTMLInputElement;
+const texSizeValue = document.getElementById('tex-size-value')!;
+const lightIntensity = document.getElementById('light-intensity') as HTMLInputElement;
+const lightIntensityValue = document.getElementById('light-intensity-value')!;
+const normalScale = document.getElementById('normal-scale') as HTMLInputElement;
+const normalScaleValue = document.getElementById('normal-scale-value')!;
+const btnMatStandard = document.getElementById('btn-mat-standard')!;
+const btnMatLambert = document.getElementById('btn-mat-lambert')!;
+
 // State
 let currentResult: ProcessedImage | null = null;
 let normalMapData: Uint8ClampedArray | null = null;
 let normalMapWidth = 0;
 let normalMapHeight = 0;
 let dragCounter = 0;
+
+function rafThrottle(fn: () => void): () => void {
+  let scheduled = false;
+  return () => {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      fn();
+    });
+  };
+}
 
 function updateDropZoneVisibility() {
   const dragging = dragCounter > 0;
@@ -155,6 +187,7 @@ async function handleNormalMap(file: File) {
     updateDropZoneVisibility();
 
     updateChannelPacked();
+    updateThreeScene();
   } catch {
     // silently ignore
   }
@@ -250,6 +283,8 @@ function drawCanvasToDisplayCanvas(displayCanvas: HTMLCanvasElement, sourceCanva
 
 // --- Gradient map ---
 
+let gradientTileCanvas: HTMLCanvasElement | null = null;
+
 function updateGradientMap() {
   if (!currentResult) return;
 
@@ -258,6 +293,7 @@ function updateGradientMap() {
 
   const lumImageData = buildGradientMappedImage(currentResult, colorA, colorB);
   const lumSrcCanvas = imageDataToCanvas(lumImageData);
+  gradientTileCanvas = lumSrcCanvas;
   drawCanvasToDisplayCanvas(canvasLuminance, lumSrcCanvas, currentResult.width, currentResult.height);
 
   const { width: fullW, height: fullH } = currentResult;
@@ -274,10 +310,28 @@ function updateGradientMap() {
       ctx.drawImage(lumSrcCanvas, x * fullW, y * fullH);
     }
   }
+
+  updateThreeScene();
 }
 
-pickerDark.addEventListener('input', updateGradientMap);
-pickerLight.addEventListener('input', updateGradientMap);
+function updateThreeScene() {
+  if (!currentResult || !normalMapData || !gradientTileCanvas) {
+    section3d.classList.add('hidden');
+    return;
+  }
+  if (normalMapWidth !== currentResult.width || normalMapHeight !== currentResult.height) {
+    section3d.classList.add('hidden');
+    return;
+  }
+  section3d.classList.remove('hidden');
+  initThreeScene(threeContainer);
+  setColorTexture(gradientTileCanvas);
+  setNormalTexture(canvasNormal);
+}
+
+const scheduleGradientUpdate = rafThrottle(updateGradientMap);
+pickerDark.addEventListener('input', scheduleGradientUpdate);
+pickerLight.addEventListener('input', scheduleGradientUpdate);
 
 function renderLuminanceOutputs() {
   if (!currentResult) return;
@@ -291,13 +345,47 @@ function renderLuminanceOutputs() {
   updateGradientMap();
 }
 
-function onClampChange() {
-  clampLowValue.textContent = `${(+clampLow.value).toFixed(1)}%`;
-  clampHighValue.textContent = `${(+clampHigh.value).toFixed(1)}%`;
+const scheduleClampRecompute = rafThrottle(() => {
   if (!currentResult) return;
   applyLuminanceClamp(currentResult, +clampLow.value / 100, +clampHigh.value / 100);
   renderLuminanceOutputs();
+});
+
+function onClampChange() {
+  clampLowValue.textContent = `${(+clampLow.value).toFixed(1)}%`;
+  clampHighValue.textContent = `${(+clampHigh.value).toFixed(1)}%`;
+  scheduleClampRecompute();
 }
 
 clampLow.addEventListener('input', onClampChange);
 clampHigh.addEventListener('input', onClampChange);
+
+texSize.addEventListener('input', () => {
+  const v = +texSize.value;
+  texSizeValue.textContent = `${v.toFixed(1)}×`;
+  setTextureRepeat(v);
+});
+
+lightIntensity.addEventListener('input', () => {
+  const v = +lightIntensity.value;
+  lightIntensityValue.textContent = v.toFixed(2);
+  setDirectionalIntensity(v);
+});
+
+normalScale.addEventListener('input', () => {
+  const v = +normalScale.value;
+  normalScaleValue.textContent = v.toFixed(2);
+  setNormalScale(v);
+});
+
+btnMatStandard.addEventListener('click', () => {
+  btnMatStandard.classList.add('active');
+  btnMatLambert.classList.remove('active');
+  setMaterialType('standard');
+});
+
+btnMatLambert.addEventListener('click', () => {
+  btnMatLambert.classList.add('active');
+  btnMatStandard.classList.remove('active');
+  setMaterialType('lambert');
+});

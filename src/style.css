@@ -71,6 +71,80 @@ h1 {
   color: #aaa;
 }
 
+#three-controls {
+  display: flex;
+  gap: 2rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+
+#three-controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #ccc;
+}
+
+#three-controls .clamp-label {
+  min-width: 5.5rem;
+}
+
+#three-controls input[type="range"] {
+  width: 180px;
+}
+
+#three-controls .clamp-value {
+  min-width: 3rem;
+  font-variant-numeric: tabular-nums;
+  color: #aaa;
+}
+
+#material-toggle {
+  display: flex;
+  gap: 0;
+  align-items: center;
+}
+
+#material-toggle .toggle-btn {
+  margin-top: 0;
+}
+
+#recolored-and-3d-row {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+  align-items: flex-start;
+}
+
+#recolored-wrap,
+#recolored-and-3d-row #section-3d {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-top: 0;
+}
+
+#recolored-wrap canvas {
+  width: 100% !important;
+  height: auto !important;
+}
+
+#three-container {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#three-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  border: none;
+  border-radius: 0;
+}
+
 h2 {
   font-size: 1rem;
   font-weight: 500;
