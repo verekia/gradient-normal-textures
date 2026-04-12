@@ -360,3 +360,237 @@ button {
 button:hover {
   background: #444;
 }
+
+/* KTX2 config section */
+#section-ktx2 {
+  margin-top: 2rem;
+}
+
+#ktx2-details {
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #222;
+}
+
+#ktx2-details > summary {
+  cursor: pointer;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9rem;
+  color: #ccc;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#ktx2-details > summary::-webkit-details-marker { display: none; }
+
+#ktx2-details > summary::before {
+  content: "▶";
+  font-size: 0.7rem;
+  color: #888;
+  transition: transform 0.15s;
+  display: inline-block;
+  width: 0.9em;
+}
+
+#ktx2-details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.ktx2-summary-title { font-weight: 500; }
+
+.codec-explainer {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  background: #1b1b1b;
+  border-left: 3px solid #2a4a6a;
+  border-radius: 3px;
+  color: #bbb;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.codec-explainer b {
+  color: #d0e4ff;
+}
+
+.ktx2-label[title] {
+  text-decoration: underline dashed #666;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.ktx2-label[title]:hover {
+  text-decoration-color: #aaa;
+  color: #e5e5e5;
+}
+
+.ktx2-body {
+  padding: 0.75rem 0.9rem 1rem;
+  border-top: 1px solid #2a2a2a;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.ktx2-row,
+.ktx2-opts {
+  display: flex;
+  gap: 1.25rem 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ktx2-opts {
+  padding-top: 0.5rem;
+  border-top: 1px dashed #333;
+}
+
+.ktx2-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #ccc;
+}
+
+.ktx2-field.ktx2-checkbox {
+  gap: 0.4rem;
+}
+
+.ktx2-field.ktx2-checkbox input[type="checkbox"] {
+  margin: 0;
+}
+
+.ktx2-label { color: #bbb; }
+
+.ktx2-field input[type="range"] {
+  width: 140px;
+}
+
+.ktx2-field input[type="number"] {
+  width: 90px;
+  background: #1b1b1b;
+  border: 1px solid #444;
+  color: #ddd;
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ktx2-field select {
+  background: #1b1b1b;
+  border: 1px solid #444;
+  color: #ddd;
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.82rem;
+}
+
+.ktx2-value {
+  min-width: 2.5rem;
+  font-variant-numeric: tabular-nums;
+  color: #aaa;
+  font-size: 0.82rem;
+}
+
+.toggle-group {
+  display: inline-flex;
+}
+
+.toggle-group .toggle-btn {
+  margin-top: 0;
+}
+
+/* Canvas download overlay (KTX2 badge) */
+.ktx2-canvas-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.ktx2-download-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(20, 20, 20, 0.78);
+  color: #e8e8e8;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.12s ease, transform 0.12s ease, background-color 0.12s;
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.ktx2-canvas-wrap:hover .ktx2-download-badge,
+.ktx2-canvas-wrap:focus-within .ktx2-download-badge,
+.ktx2-download-badge.busy {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ktx2-download-badge:hover {
+  background: rgba(40, 60, 90, 0.9);
+  border-color: #88aaff;
+  color: #ffffff;
+}
+
+.ktx2-download-badge:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+.ktx2-badge-arrow {
+  width: 12px;
+  height: 12px;
+}
+
+.ktx2-badge-label { line-height: 1; }
+
+/* test.html — loaded-file info card */
+#loaded-info {
+  min-width: 200px;
+  padding: 0.6rem 0.8rem;
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #ddd;
+  line-height: 1.35;
+}
+
+.ktx2-info-sub {
+  color: #888;
+  font-size: 0.78rem;
+}
+
+.format-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  margin-right: 0.3rem;
+  background: #2a4a6a;
+  color: #d0e4ff;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: baseline;
+}

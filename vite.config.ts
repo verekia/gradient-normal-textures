@@ -7,6 +7,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         pca: resolve(__dirname, 'pca.html'),
+        test: resolve(__dirname, 'test.html'),
       },
     },
   },
