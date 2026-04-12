@@ -19,6 +19,15 @@ import {
   setDirectionalIntensity,
   setNormalScale,
 } from './three-scene';
+import {
+  encodeRgbaToKtx2,
+  downloadKtx2,
+  DEFAULT_ETC1S,
+  DEFAULT_UASTC,
+  type BasisOptions,
+  type Ktx2EncodeOptions,
+  type UastcLevel,
+} from './ktx2';
 
 // DOM elements — texture drop
 const dropZoneWrap = document.getElementById('drop-zone-wrap')!;
@@ -60,6 +69,40 @@ const normalScale = document.getElementById('normal-scale') as HTMLInputElement;
 const normalScaleValue = document.getElementById('normal-scale-value')!;
 const btnMatStandard = document.getElementById('btn-mat-standard')!;
 const btnMatLambert = document.getElementById('btn-mat-lambert')!;
+
+// KTX2 config DOM
+const sectionKtx2 = document.getElementById('section-ktx2')!;
+const ktx2CodecEtc1s = document.getElementById('ktx2-codec-etc1s') as HTMLButtonElement;
+const ktx2CodecUastc = document.getElementById('ktx2-codec-uastc') as HTMLButtonElement;
+const ktx2Mipmaps = document.getElementById('ktx2-mipmaps') as HTMLInputElement;
+const ktx2Zstd = document.getElementById('ktx2-zstd') as HTMLInputElement;
+const ktx2ZstdValue = document.getElementById('ktx2-zstd-value')!;
+const ktx2Etc1sOpts = document.getElementById('ktx2-etc1s-opts')!;
+const ktx2UastcOpts = document.getElementById('ktx2-uastc-opts')!;
+
+const ktx2Etc1sClevel = document.getElementById('ktx2-etc1s-clevel') as HTMLInputElement;
+const ktx2Etc1sClevelValue = document.getElementById('ktx2-etc1s-clevel-value')!;
+const ktx2Etc1sQlevel = document.getElementById('ktx2-etc1s-qlevel') as HTMLInputElement;
+const ktx2Etc1sQlevelValue = document.getElementById('ktx2-etc1s-qlevel-value')!;
+const ktx2Etc1sMaxEndpoints = document.getElementById('ktx2-etc1s-max-endpoints') as HTMLInputElement;
+const ktx2Etc1sMaxSelectors = document.getElementById('ktx2-etc1s-max-selectors') as HTMLInputElement;
+const ktx2Etc1sEndpointRdo = document.getElementById('ktx2-etc1s-endpoint-rdo') as HTMLInputElement;
+const ktx2Etc1sSelectorRdo = document.getElementById('ktx2-etc1s-selector-rdo') as HTMLInputElement;
+const ktx2Etc1sNormalmap = document.getElementById('ktx2-etc1s-normalmap') as HTMLInputElement;
+const ktx2Etc1sNoEndpointRdo = document.getElementById('ktx2-etc1s-no-endpoint-rdo') as HTMLInputElement;
+const ktx2Etc1sNoSelectorRdo = document.getElementById('ktx2-etc1s-no-selector-rdo') as HTMLInputElement;
+
+const ktx2UastcLevel = document.getElementById('ktx2-uastc-level') as HTMLSelectElement;
+const ktx2UastcRdo = document.getElementById('ktx2-uastc-rdo') as HTMLInputElement;
+const ktx2UastcRdoL = document.getElementById('ktx2-uastc-rdo-l') as HTMLInputElement;
+const ktx2UastcRdoD = document.getElementById('ktx2-uastc-rdo-d') as HTMLInputElement;
+const ktx2UastcRdoErr = document.getElementById('ktx2-uastc-rdo-err') as HTMLInputElement;
+const ktx2UastcRdoStd = document.getElementById('ktx2-uastc-rdo-std') as HTMLInputElement;
+const ktx2UastcRdoDfsm = document.getElementById('ktx2-uastc-rdo-dfsm') as HTMLInputElement;
+
+type Ktx2Target = 'luminance' | 'packed';
+const ktx2Badges = Array.from(document.querySelectorAll<HTMLButtonElement>('.ktx2-download-badge'));
+let ktx2Codec: 'etc1s' | 'uastc' = 'etc1s';
 
 // State
 let currentResult: ProcessedImage | null = null;
@@ -163,6 +206,7 @@ fileInputNormal.addEventListener('change', () => {
 function showError(msg: string) {
   errorMessage.textContent = msg;
   errorMessage.classList.remove('hidden');
+  sectionKtx2.classList.add('hidden');
   sectionGrayscale.classList.add('hidden');
   sectionGradient.classList.add('hidden');
 }
@@ -243,6 +287,7 @@ async function handleFile(file: File) {
 
     renderLuminanceOutputs();
 
+    sectionKtx2.classList.remove('hidden');
     sectionGrayscale.classList.remove('hidden');
     sectionGradient.classList.remove('hidden');
     updateDropZoneVisibility();
@@ -389,3 +434,114 @@ btnMatLambert.addEventListener('click', () => {
   btnMatStandard.classList.remove('active');
   setMaterialType('lambert');
 });
+
+// --- KTX2 config ---
+
+function setKtx2Codec(codec: 'etc1s' | 'uastc') {
+  ktx2Codec = codec;
+  const isEtc1s = codec === 'etc1s';
+  ktx2CodecEtc1s.classList.toggle('active', isEtc1s);
+  ktx2CodecUastc.classList.toggle('active', !isEtc1s);
+  ktx2Etc1sOpts.classList.toggle('hidden', !isEtc1s);
+  ktx2UastcOpts.classList.toggle('hidden', isEtc1s);
+}
+
+ktx2CodecEtc1s.addEventListener('click', () => setKtx2Codec('etc1s'));
+ktx2CodecUastc.addEventListener('click', () => setKtx2Codec('uastc'));
+
+ktx2Etc1sClevel.addEventListener('input', () => {
+  ktx2Etc1sClevelValue.textContent = ktx2Etc1sClevel.value;
+});
+ktx2Etc1sQlevel.addEventListener('input', () => {
+  ktx2Etc1sQlevelValue.textContent = ktx2Etc1sQlevel.value;
+});
+ktx2Zstd.addEventListener('input', () => {
+  const v = +ktx2Zstd.value;
+  ktx2ZstdValue.textContent = v === 0 ? 'off' : String(v);
+});
+
+function readBasisOptions(forPacked: boolean): BasisOptions {
+  if (ktx2Codec === 'etc1s') {
+    return {
+      ...DEFAULT_ETC1S,
+      compressionLevel: +ktx2Etc1sClevel.value,
+      qualityLevel: +ktx2Etc1sQlevel.value,
+      maxEndpoints: +ktx2Etc1sMaxEndpoints.value,
+      maxSelectors: +ktx2Etc1sMaxSelectors.value,
+      endpointRDOThreshold: +ktx2Etc1sEndpointRdo.value,
+      selectorRDOThreshold: +ktx2Etc1sSelectorRdo.value,
+      normalMap: ktx2Etc1sNormalmap.checked || forPacked,
+      noEndpointRDO: ktx2Etc1sNoEndpointRdo.checked,
+      noSelectorRDO: ktx2Etc1sNoSelectorRdo.checked,
+    };
+  }
+  return {
+    ...DEFAULT_UASTC,
+    level: (+ktx2UastcLevel.value as UastcLevel),
+    rdo: ktx2UastcRdo.checked,
+    rdoQualityScalar: +ktx2UastcRdoL.value,
+    rdoDictSize: +ktx2UastcRdoD.value,
+    rdoMaxSmoothBlockErrorScale: +ktx2UastcRdoErr.value,
+    rdoMaxSmoothBlockStdDev: +ktx2UastcRdoStd.value,
+    rdoDontFavorSimplerModes: ktx2UastcRdoDfsm.checked,
+  };
+}
+
+function readKtx2Options(target: Ktx2Target): Ktx2EncodeOptions {
+  const isPacked = target === 'packed';
+  return {
+    basis: readBasisOptions(isPacked),
+    generateMipmaps: ktx2Mipmaps.checked,
+    zstdLevel: +ktx2Zstd.value,
+    // Packed textures carry non-color data in RGB (normal) + alpha (luminance),
+    // so they must be treated as linear. Luminance preview is a color (grayscale).
+    srgb: !isPacked,
+  };
+}
+
+function getLuminanceRgba(): { data: Uint8Array; width: number; height: number } | null {
+  if (!currentResult) return null;
+  const { width, height } = currentResult;
+  const imageData = buildGrayscaleImage(currentResult);
+  return { data: new Uint8Array(imageData.data.buffer.slice(0)), width, height };
+}
+
+function getPackedRgba(): { data: Uint8Array; width: number; height: number } | null {
+  if (!currentResult || !normalMapData) return null;
+  if (normalMapWidth !== currentResult.width || normalMapHeight !== currentResult.height) return null;
+  const { width, height } = currentResult;
+  const imageData = buildChannelPackedImage(normalMapData, currentResult.luminanceMap, width, height);
+  return { data: new Uint8Array(imageData.data.buffer.slice(0)), width, height };
+}
+
+async function handleKtx2Download(target: Ktx2Target, badge: HTMLButtonElement) {
+  const src = target === 'luminance' ? getLuminanceRgba() : getPackedRgba();
+  if (!src) return;
+  const prevLabel = badge.querySelector('.ktx2-badge-label')?.textContent ?? 'KTX2';
+  const labelEl = badge.querySelector('.ktx2-badge-label') as HTMLElement | null;
+  badge.classList.add('busy');
+  badge.disabled = true;
+  if (labelEl) labelEl.textContent = 'Encoding…';
+  try {
+    const opts = readKtx2Options(target);
+    const bytes = await encodeRgbaToKtx2(src.data, src.width, src.height, opts);
+    const suffix = opts.basis.codec === 'etc1s' ? 'etc1s' : 'uastc';
+    downloadKtx2(bytes, `${target}-${suffix}.ktx2`);
+  } catch (err) {
+    console.error('KTX2 encode failed:', err);
+    alert(`KTX2 encode failed: ${(err as Error).message}`);
+  } finally {
+    badge.classList.remove('busy');
+    badge.disabled = false;
+    if (labelEl) labelEl.textContent = prevLabel;
+  }
+}
+
+for (const badge of ktx2Badges) {
+  badge.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = badge.dataset.target as Ktx2Target | undefined;
+    if (target !== 'luminance' && target !== 'packed') return;
+    void handleKtx2Download(target, badge);
+  });
+}
