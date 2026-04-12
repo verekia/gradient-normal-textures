@@ -460,7 +460,7 @@ ktx2Zstd.addEventListener('input', () => {
   ktx2ZstdValue.textContent = v === 0 ? 'off' : String(v);
 });
 
-function readBasisOptions(forPacked: boolean): BasisOptions {
+function readBasisOptions(): BasisOptions {
   if (ktx2Codec === 'etc1s') {
     return {
       ...DEFAULT_ETC1S,
@@ -470,7 +470,7 @@ function readBasisOptions(forPacked: boolean): BasisOptions {
       maxSelectors: +ktx2Etc1sMaxSelectors.value,
       endpointRDOThreshold: +ktx2Etc1sEndpointRdo.value,
       selectorRDOThreshold: +ktx2Etc1sSelectorRdo.value,
-      normalMap: ktx2Etc1sNormalmap.checked || forPacked,
+      normalMap: ktx2Etc1sNormalmap.checked,
       noEndpointRDO: ktx2Etc1sNoEndpointRdo.checked,
       noSelectorRDO: ktx2Etc1sNoSelectorRdo.checked,
     };
@@ -490,11 +490,14 @@ function readBasisOptions(forPacked: boolean): BasisOptions {
 function readKtx2Options(target: Ktx2Target): Ktx2EncodeOptions {
   const isPacked = target === 'packed';
   return {
-    basis: readBasisOptions(isPacked),
+    basis: readBasisOptions(),
     generateMipmaps: ktx2Mipmaps.checked,
     zstdLevel: +ktx2Zstd.value,
     // Packed textures carry non-color data in RGB (normal) + alpha (luminance),
-    // so they must be treated as linear. Luminance preview is a color (grayscale).
+    // so they must be encoded as linear (UNORM, not SRGB). Do NOT set the basis
+    // `normalMap` flag though — that triggers ETC1S's "RX/GY" two-channel mode
+    // (normal.X in R, normal.Y in A) which discards the blue channel and the
+    // luminance in A. Packed textures need all four channels preserved.
     srgb: !isPacked,
   };
 }
