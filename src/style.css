@@ -536,3 +536,20 @@ button:hover {
 }
 
 .ktx2-badge-label { line-height: 1; }
+
+/* ktx.html — loaded-file info card */
+#loaded-info {
+  min-width: 200px;
+  padding: 0.6rem 0.8rem;
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #ddd;
+  line-height: 1.35;
+}
+
+.ktx2-info-sub {
+  color: #888;
+  font-size: 0.78rem;
+}
