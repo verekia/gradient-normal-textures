@@ -47,7 +47,7 @@ h2 {
 }
 
 /* Drop zone */
-#drop-zone {
+.drop-zone {
   width: 256px;
   min-width: 256px;
   height: 256px;
@@ -62,12 +62,12 @@ h2 {
   position: relative;
 }
 
-#drop-zone:hover,
-#drop-zone.drag-over {
+.drop-zone:hover,
+.drop-zone.drag-over {
   border-color: #88aaff;
 }
 
-#drop-zone p {
+.drop-zone p {
   font-size: 0.85rem;
   color: #999;
   pointer-events: none;
@@ -75,13 +75,13 @@ h2 {
   padding: 0 1rem;
 }
 
-#drop-zone .formats {
+.drop-zone .formats {
   font-size: 0.8rem;
   color: #666;
   margin-top: 0.5rem;
 }
 
-#file-input {
+.file-input {
   position: absolute;
   inset: 0;
   opacity: 0;
@@ -107,7 +107,6 @@ section {
 #comparison-row {
   display: flex;
   gap: 2rem;
-  flex-wrap: wrap;
 }
 
 
@@ -117,6 +116,16 @@ canvas {
   border: 1px solid #333;
   border-radius: 4px;
   height: auto;
+}
+
+canvas.checkerboard {
+  background-image:
+    linear-gradient(45deg, #444 25%, transparent 25%),
+    linear-gradient(-45deg, #444 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #444 75%),
+    linear-gradient(-45deg, transparent 75%, #444 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }
 
 /* Endpoints */

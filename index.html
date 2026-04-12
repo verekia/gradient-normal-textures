@@ -9,19 +9,31 @@
     <div id="app">
       <h1>Texture Gradient Map</h1>
 
-      <!-- 1. Drop zone + original preview -->
+      <!-- 1. Drop zones + original previews -->
       <div id="drop-row">
         <div>
-          <h2>Input</h2>
-          <div id="drop-zone" tabindex="0">
+          <h2>Texture</h2>
+          <div id="drop-zone" class="drop-zone" tabindex="0">
             <p>Drop a texture here or click to select.</p>
             <p class="formats">PNG, JPG, WebP</p>
-            <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp" />
+            <input type="file" id="file-input" class="file-input" accept="image/png,image/jpeg,image/webp" />
           </div>
         </div>
         <div id="original-wrap" class="hidden">
           <h2>Original</h2>
           <canvas id="canvas-original"></canvas>
+        </div>
+        <div>
+          <h2>Normal Map</h2>
+          <div id="drop-zone-normal" class="drop-zone" tabindex="0">
+            <p>Drop a normal map here or click to select.</p>
+            <p class="formats">PNG, JPG, WebP</p>
+            <input type="file" id="file-input-normal" class="file-input" accept="image/png,image/jpeg,image/webp" />
+          </div>
+        </div>
+        <div id="normal-wrap" class="hidden">
+          <h2>Normal</h2>
+          <canvas id="canvas-normal"></canvas>
         </div>
       </div>
       <div id="error-message" class="hidden"></div>
@@ -36,6 +48,16 @@
           <div>
             <h2>PCA</h2>
             <canvas id="canvas-grayscale"></canvas>
+          </div>
+          <div id="packed-lum-wrap" class="hidden">
+            <h2>Packed Luminance</h2>
+            <canvas id="canvas-packed-lum" class="checkerboard"></canvas>
+            <button id="btn-download-packed-lum">Download packed (lum) PNG</button>
+          </div>
+          <div id="packed-pca-wrap" class="hidden">
+            <h2>Packed PCA</h2>
+            <canvas id="canvas-packed-pca" class="checkerboard"></canvas>
+            <button id="btn-download-packed-pca">Download packed (PCA) PNG</button>
           </div>
         </div>
         <div id="endpoints">

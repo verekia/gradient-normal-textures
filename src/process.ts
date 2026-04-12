@@ -304,6 +304,30 @@ export function buildGradientMappedImage(
 }
 
 /**
+ * Build a channel-packed ImageData: normal map RGB + grayscale map alpha.
+ * Both images must have the same dimensions.
+ */
+export function buildChannelPackedImage(
+  normalData: Uint8ClampedArray,
+  grayscaleMap: Float64Array,
+  width: number,
+  height: number,
+): ImageData {
+  const imageData = new ImageData(width, height);
+  const out = imageData.data;
+
+  for (let i = 0; i < width * height; i++) {
+    out[i * 4] = normalData[i * 4];
+    out[i * 4 + 1] = normalData[i * 4 + 1];
+    out[i * 4 + 2] = normalData[i * 4 + 2];
+    const g = grayscaleMap[i];
+    out[i * 4 + 3] = isNaN(g) ? 0 : Math.round(g * 255);
+  }
+
+  return imageData;
+}
+
+/**
  * Render an ImageData to a canvas and return it (for download at full resolution).
  */
 export function imageDataToCanvas(imageData: ImageData): HTMLCanvasElement {
@@ -313,4 +337,80 @@ export function imageDataToCanvas(imageData: ImageData): HTMLCanvasElement {
   const ctx = canvas.getContext('2d')!;
   ctx.putImageData(imageData, 0, 0);
   return canvas;
+}
+
+/**
+ * Encode raw RGBA ImageData directly to a PNG Blob, bypassing Canvas 2D
+ * to avoid premultiplied alpha corruption of RGB channels.
+ */
+export async function imageDataToPngBlob(imageData: ImageData): Promise<Blob> {
+  const { width, height, data } = imageData;
+
+  // Build raw scanlines with filter byte (0 = None) per row
+  const rowBytes = width * 4;
+  const raw = new Uint8Array((rowBytes + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const outOff = y * (rowBytes + 1);
+    raw[outOff] = 0; // filter: None
+    raw.set(data.subarray(y * rowBytes, y * rowBytes + rowBytes), outOff + 1);
+  }
+
+  // Deflate using CompressionStream
+  const cs = new CompressionStream('deflate');
+  const writer = cs.writable.getWriter();
+  writer.write(raw);
+  writer.close();
+  const compressedBuf = await new Response(cs.readable).arrayBuffer();
+  const compressed = new Uint8Array(compressedBuf);
+
+  // PNG CRC32
+  const crcTable = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    crcTable[n] = c;
+  }
+  function crc32(buf: Uint8Array): number {
+    let c = 0xffffffff;
+    for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function writeChunk(type: string, chunkData: Uint8Array): Uint8Array {
+    const chunk = new Uint8Array(4 + 4 + chunkData.length + 4);
+    const view = new DataView(chunk.buffer);
+    view.setUint32(0, chunkData.length);
+    for (let i = 0; i < 4; i++) chunk[4 + i] = type.charCodeAt(i);
+    chunk.set(chunkData, 8);
+    const crcBuf = new Uint8Array(4 + chunkData.length);
+    for (let i = 0; i < 4; i++) crcBuf[i] = type.charCodeAt(i);
+    crcBuf.set(chunkData, 4);
+    view.setUint32(8 + chunkData.length, crc32(crcBuf));
+    return chunk;
+  }
+
+  // IHDR: width, height, bit depth 8, color type 6 (RGBA)
+  const ihdrData = new Uint8Array(13);
+  const ihdrView = new DataView(ihdrData.buffer);
+  ihdrView.setUint32(0, width);
+  ihdrView.setUint32(4, height);
+  ihdrData[8] = 8;  // bit depth
+  ihdrData[9] = 6;  // color type: RGBA
+  ihdrData[10] = 0; // compression
+  ihdrData[11] = 0; // filter
+  ihdrData[12] = 0; // interlace
+
+  const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  const ihdr = writeChunk('IHDR', ihdrData);
+  const idat = writeChunk('IDAT', compressed);
+  const iend = writeChunk('IEND', new Uint8Array(0));
+
+  const png = new Uint8Array(sig.length + ihdr.length + idat.length + iend.length);
+  let off = 0;
+  png.set(sig, off); off += sig.length;
+  png.set(ihdr, off); off += ihdr.length;
+  png.set(idat, off); off += idat.length;
+  png.set(iend, off);
+
+  return new Blob([png], { type: 'image/png' });
 }

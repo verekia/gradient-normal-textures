@@ -5,25 +5,39 @@ import {
   processPixels,
   buildGrayscaleImage,
   buildGradientMappedImage,
+  buildChannelPackedImage,
   imageDataToCanvas,
+  imageDataToPngBlob,
   type ProcessedImage,
 } from './process';
 
-// DOM elements
+// DOM elements — texture drop
 const dropZone = document.getElementById('drop-zone')!;
 const fileInput = document.getElementById('file-input') as HTMLInputElement;
 const errorMessage = document.getElementById('error-message')!;
 const originalWrap = document.getElementById('original-wrap')!;
 const canvasOriginal = document.getElementById('canvas-original') as HTMLCanvasElement;
 
+// DOM elements — normal map drop
+const dropZoneNormal = document.getElementById('drop-zone-normal')!;
+const fileInputNormal = document.getElementById('file-input-normal') as HTMLInputElement;
+const normalWrap = document.getElementById('normal-wrap')!;
+const canvasNormal = document.getElementById('canvas-normal') as HTMLCanvasElement;
+
 const sectionGrayscale = document.getElementById('section-grayscale')!;
 const canvasGrayscaleLum = document.getElementById('canvas-grayscale-lum') as HTMLCanvasElement;
 const canvasGrayscale = document.getElementById('canvas-grayscale') as HTMLCanvasElement;
+const packedLumWrap = document.getElementById('packed-lum-wrap')!;
+const packedPcaWrap = document.getElementById('packed-pca-wrap')!;
+const canvasPackedLum = document.getElementById('canvas-packed-lum') as HTMLCanvasElement;
+const canvasPackedPca = document.getElementById('canvas-packed-pca') as HTMLCanvasElement;
 const swatchDark = document.getElementById('swatch-dark')!;
 const swatchLight = document.getElementById('swatch-light')!;
 const darkHexEl = document.getElementById('dark-hex')!;
 const lightHexEl = document.getElementById('light-hex')!;
 const btnDownloadGrayscale = document.getElementById('btn-download-grayscale')!;
+const btnDownloadPackedLum = document.getElementById('btn-download-packed-lum')!;
+const btnDownloadPackedPca = document.getElementById('btn-download-packed-pca')!;
 
 const sectionGradient = document.getElementById('section-gradient')!;
 const pickerDark = document.getElementById('picker-dark') as HTMLInputElement;
@@ -39,8 +53,11 @@ const btnDownloadGradient = document.getElementById('btn-download-gradient')!;
 let currentResult: ProcessedImage | null = null;
 let fullResGrayscaleImageData: ImageData | null = null;
 let tiledMode: 'pca' | 'luminance' = 'pca';
+let normalMapData: Uint8ClampedArray | null = null;
+let normalMapWidth = 0;
+let normalMapHeight = 0;
 
-// --- Drop zone handling ---
+// --- Drop zone handling (texture) ---
 
 dropZone.addEventListener('dragover', (e) => {
   e.preventDefault();
@@ -63,6 +80,29 @@ fileInput.addEventListener('change', () => {
   if (file) handleFile(file);
 });
 
+// --- Drop zone handling (normal map) ---
+
+dropZoneNormal.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZoneNormal.classList.add('drag-over');
+});
+
+dropZoneNormal.addEventListener('dragleave', () => {
+  dropZoneNormal.classList.remove('drag-over');
+});
+
+dropZoneNormal.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZoneNormal.classList.remove('drag-over');
+  const file = e.dataTransfer?.files[0];
+  if (file) handleNormalMap(file);
+});
+
+fileInputNormal.addEventListener('change', () => {
+  const file = fileInputNormal.files?.[0];
+  if (file) handleNormalMap(file);
+});
+
 // --- File handling ---
 
 function showError(msg: string) {
@@ -75,6 +115,53 @@ function showError(msg: string) {
 
 function clearError() {
   errorMessage.classList.add('hidden');
+}
+
+async function handleNormalMap(file: File) {
+  const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!validTypes.includes(file.type)) return;
+
+  try {
+    const img = await loadImage(file);
+    const { data, width, height } = getPixelData(img);
+
+    normalMapData = data;
+    normalMapWidth = width;
+    normalMapHeight = height;
+
+    drawToDisplayCanvas(canvasNormal, img, width, height);
+    normalWrap.classList.remove('hidden');
+
+    updateChannelPacked();
+  } catch {
+    // silently ignore
+  }
+}
+
+function updateChannelPacked() {
+  if (!currentResult || !normalMapData) {
+    packedLumWrap.classList.add('hidden');
+    packedPcaWrap.classList.add('hidden');
+    return;
+  }
+
+  if (normalMapWidth !== currentResult.width || normalMapHeight !== currentResult.height) {
+    packedLumWrap.classList.add('hidden');
+    packedPcaWrap.classList.add('hidden');
+    return;
+  }
+
+  const { width, height } = currentResult;
+
+  const packedLumImageData = buildChannelPackedImage(normalMapData, currentResult.luminanceMap, width, height);
+  const packedLumCanvas = imageDataToCanvas(packedLumImageData);
+  drawCanvasToDisplayCanvas(canvasPackedLum, packedLumCanvas, width, height);
+  packedLumWrap.classList.remove('hidden');
+
+  const packedPcaImageData = buildChannelPackedImage(normalMapData, currentResult.grayscaleMap, width, height);
+  const packedPcaCanvas = imageDataToCanvas(packedPcaImageData);
+  drawCanvasToDisplayCanvas(canvasPackedPca, packedPcaCanvas, width, height);
+  packedPcaWrap.classList.remove('hidden');
 }
 
 async function handleFile(file: File) {
@@ -122,6 +209,9 @@ async function handleFile(file: File) {
     lightHexEl.textContent = result.lightHex;
 
     sectionGrayscale.classList.remove('hidden');
+
+    // Update channel-packed previews if normal map is loaded
+    updateChannelPacked();
 
     // Set color picker defaults
     pickerDark.value = result.darkHex;
@@ -243,3 +333,24 @@ function downloadCanvas(canvas: HTMLCanvasElement, filename: string) {
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
+
+async function downloadImageDataAsRawPng(imageData: ImageData, filename: string) {
+  const blob = await imageDataToPngBlob(imageData);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+btnDownloadPackedLum.addEventListener('click', async () => {
+  if (!currentResult || !normalMapData) return;
+  const imageData = buildChannelPackedImage(normalMapData, currentResult.luminanceMap, currentResult.width, currentResult.height);
+  await downloadImageDataAsRawPng(imageData, 'packed-luminance.png');
+});
+
+btnDownloadPackedPca.addEventListener('click', async () => {
+  if (!currentResult || !normalMapData) return;
+  const imageData = buildChannelPackedImage(normalMapData, currentResult.grayscaleMap, currentResult.width, currentResult.height);
+  await downloadImageDataAsRawPng(imageData, 'packed-pca.png');
+});
