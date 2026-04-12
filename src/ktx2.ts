@@ -106,6 +106,13 @@ export interface Ktx2EncodeOptions {
   zstdLevel: number;
   /** Use sRGB (R8G8B8A8_SRGB) vs linear (R8G8B8A8_UNORM). Default true. */
   srgb: boolean;
+  /**
+   * Flip the source rows vertically before encoding. WebGL ignores
+   * UNPACK_FLIP_Y_WEBGL for compressed textures, so KTX2Loader leaves the
+   * sampled origin at bottom-left; pre-flipping the pixels at encode time
+   * makes the exported file display upright when loaded into three.js.
+   */
+  flipY: boolean;
 }
 
 export const DEFAULT_ETC1S: Etc1sOptions = {
@@ -157,6 +164,17 @@ function downsampleRgba(src: Uint8Array, w: number, h: number): { data: Uint8Arr
   return { data: out, w: nw, h: nh };
 }
 
+function flipRgbaVertically(src: Uint8Array, w: number, h: number): Uint8Array {
+  const rowBytes = w * 4;
+  const out = new Uint8Array(src.length);
+  for (let y = 0; y < h; y++) {
+    const srcOffset = y * rowBytes;
+    const dstOffset = (h - 1 - y) * rowBytes;
+    out.set(src.subarray(srcOffset, srcOffset + rowBytes), dstOffset);
+  }
+  return out;
+}
+
 function buildMipChain(base: Uint8Array, w: number, h: number): { data: Uint8Array; w: number; h: number }[] {
   const levels: { data: Uint8Array; w: number; h: number }[] = [{ data: base, w, h }];
   let cur = levels[0];
@@ -175,9 +193,10 @@ export async function encodeRgbaToKtx2(
 ): Promise<Uint8Array> {
   const ktx = await loadKtx();
 
+  const base = options.flipY ? flipRgbaVertically(rgba, width, height) : rgba;
   const levels = options.generateMipmaps
-    ? buildMipChain(rgba, width, height)
-    : [{ data: rgba, w: width, h: height }];
+    ? buildMipChain(base, width, height)
+    : [{ data: base, w: width, h: height }];
 
   const createInfo = new ktx.textureCreateInfo();
   createInfo.vkFormat = options.srgb ? ktx.VkFormat.R8G8B8A8_SRGB : ktx.VkFormat.R8G8B8A8_UNORM;

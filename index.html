@@ -8,7 +8,7 @@
   <body>
     <div id="app">
       <h1>Luminance extraction + normal packer for dynamic recoloring</h1>
-      <p class="page-link"><a href="/ktx.html">→ KTX2 preview page</a></p>
+      <p class="page-link"><a href="/test.html">→ testing page</a></p>
 
       <!-- 1. Drop zones + original previews -->
       <div id="drop-row">
@@ -44,71 +44,82 @@
         <details id="ktx2-details">
           <summary><span class="ktx2-summary-title">KTX2 export config</span></summary>
           <div class="ktx2-body">
+            <p class="codec-explainer">
+              <b>ETC1S</b> is a low-bitrate Basis Universal mode that produces very small files with lossy
+              visual quality — best for color/albedo textures where bandwidth matters more than fidelity.
+              <b>UASTC</b> is a higher-bitrate mode (8 bpp) that preserves detail far better — best for
+              normal maps, roughness/metal, and data textures. Pair UASTC with ZSTD supercompression to
+              shrink the file losslessly on disk.
+            </p>
             <div class="ktx2-row">
               <div class="ktx2-field">
                 <span class="ktx2-label">Codec</span>
                 <div id="ktx2-codec-toggle" class="toggle-group">
-                  <button id="ktx2-codec-etc1s" class="toggle-btn active" type="button">ETC1S</button>
-                  <button id="ktx2-codec-uastc" class="toggle-btn" type="button">UASTC</button>
+                  <button id="ktx2-codec-etc1s" class="toggle-btn" type="button">ETC1S</button>
+                  <button id="ktx2-codec-uastc" class="toggle-btn active" type="button">UASTC</button>
                 </div>
               </div>
               <label class="ktx2-field">
-                <span class="ktx2-label">Generate mipmaps</span>
+                <span class="ktx2-label" title="Build a full mipmap chain from the base image by 2×2 box downsampling each level until 1×1. Improves filtering quality at smaller display sizes.">Generate mipmaps</span>
                 <input type="checkbox" id="ktx2-mipmaps" checked />
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">ZSTD level</span>
-                <input type="range" id="ktx2-zstd" min="0" max="22" step="1" value="0" />
-                <span class="ktx2-value" id="ktx2-zstd-value">off</span>
+                <span class="ktx2-label" title="Mirror the source image rows vertically before encoding. WebGL ignores UNPACK_FLIP_Y_WEBGL for compressed textures, so pre-flipping here ensures the exported file samples upright in three.js.">Flip Y</span>
+                <input type="checkbox" id="ktx2-flipy" checked />
+              </label>
+              <label class="ktx2-field">
+                <span class="ktx2-label" title="Zstandard supercompression level applied on top of Basis Universal (lossless). 0 = off, 1..22 = more aggressive. Highly effective on UASTC payloads; usually near no-op on ETC1S.">ZSTD level</span>
+                <input type="range" id="ktx2-zstd" min="0" max="22" step="1" value="3" />
+                <span class="ktx2-value" id="ktx2-zstd-value">3</span>
               </label>
             </div>
 
             <!-- ETC1S options -->
-            <div id="ktx2-etc1s-opts" class="ktx2-opts">
+            <div id="ktx2-etc1s-opts" class="ktx2-opts hidden">
               <label class="ktx2-field">
-                <span class="ktx2-label">Compression level (clevel)</span>
+                <span class="ktx2-label" title="ETC1S encoder effort, 0..6. Higher = slower, better quality. Default 2.">Compression level (clevel)</span>
                 <input type="range" id="ktx2-etc1s-clevel" min="0" max="6" step="1" value="2" />
                 <span class="ktx2-value" id="ktx2-etc1s-clevel-value">2</span>
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">Quality level (qlevel)</span>
+                <span class="ktx2-label" title="ETC1S compression quality, 1..255. Higher = larger endpoint/selector codebooks, better quality, larger file. Default 128. Ignored if max endpoints or max selectors are set explicitly.">Quality level (qlevel)</span>
                 <input type="range" id="ktx2-etc1s-qlevel" min="1" max="255" step="1" value="128" />
                 <span class="ktx2-value" id="ktx2-etc1s-qlevel-value">128</span>
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">Max endpoints</span>
+                <span class="ktx2-label" title="Manually set the endpoint codebook size, 1..16128. 0 = derive from qlevel. Use together with Max selectors for fine control over quality vs size.">Max endpoints</span>
                 <input type="number" id="ktx2-etc1s-max-endpoints" min="0" max="16128" step="1" value="0" />
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">Max selectors</span>
+                <span class="ktx2-label" title="Manually set the selector codebook size, 1..16128. 0 = derive from qlevel.">Max selectors</span>
                 <input type="number" id="ktx2-etc1s-max-selectors" min="0" max="16128" step="1" value="0" />
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">Endpoint RDO threshold</span>
+                <span class="ktx2-label" title="Endpoint rate-distortion optimization step threshold. Higher values produce smaller files with lower quality. Typical range 1.0..3.0. Default 1.25.">Endpoint RDO threshold</span>
                 <input type="number" id="ktx2-etc1s-endpoint-rdo" min="0" max="10" step="0.05" value="1.25" />
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">Selector RDO threshold</span>
+                <span class="ktx2-label" title="Selector rate-distortion optimization step threshold. Higher values produce smaller files with lower quality. Typical range 1.0..3.0. Default 1.25.">Selector RDO threshold</span>
                 <input type="number" id="ktx2-etc1s-selector-rdo" min="0" max="10" step="0.05" value="1.25" />
               </label>
               <label class="ktx2-field ktx2-checkbox">
                 <input type="checkbox" id="ktx2-etc1s-normalmap" />
-                <span class="ktx2-label">Normal map mode</span>
+                <span class="ktx2-label" title="Tune ETC1S settings for tangent-space normal maps: disables perceptual (luma) weighting and switches to a two-channel R/G mode (normal.x in R, normal.y in A). Enable only for pure normal maps — discards B and A channels.">Normal map mode</span>
               </label>
               <label class="ktx2-field ktx2-checkbox">
                 <input type="checkbox" id="ktx2-etc1s-no-endpoint-rdo" />
-                <span class="ktx2-label">No endpoint RDO</span>
+                <span class="ktx2-label" title="Disable the endpoint RDO pass. Slightly improves quality at the cost of larger files; also makes encoding faster.">No endpoint RDO</span>
               </label>
               <label class="ktx2-field ktx2-checkbox">
                 <input type="checkbox" id="ktx2-etc1s-no-selector-rdo" />
-                <span class="ktx2-label">No selector RDO</span>
+                <span class="ktx2-label" title="Disable the selector RDO pass. Slightly improves quality at the cost of larger files; also makes encoding faster.">No selector RDO</span>
               </label>
             </div>
 
             <!-- UASTC options -->
-            <div id="ktx2-uastc-opts" class="ktx2-opts hidden">
+            <div id="ktx2-uastc-opts" class="ktx2-opts">
               <label class="ktx2-field">
-                <span class="ktx2-label">Quality level</span>
+                <span class="ktx2-label" title="UASTC encoding effort: 0 Fastest, 1 Faster, 2 Default, 3 Slower, 4 VerySlow. Higher levels explore more block modes per 4×4 block and produce better quality at the same bitrate.">Quality level</span>
                 <select id="ktx2-uastc-level">
                   <option value="0">0 · Fastest</option>
                   <option value="1">1 · Faster</option>
@@ -119,27 +130,27 @@
               </label>
               <label class="ktx2-field ktx2-checkbox">
                 <input type="checkbox" id="ktx2-uastc-rdo" />
-                <span class="ktx2-label">UASTC RDO</span>
+                <span class="ktx2-label" title="Enable rate-distortion optimization on UASTC output. Re-encodes blocks to be more Zstandard-friendly, shrinking the supercompressed file at a small quality cost. Pair with ZSTD level ≥ 1 to see the benefit.">UASTC RDO</span>
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">RDO quality scalar (rdo_l)</span>
+                <span class="ktx2-label" title="UASTC RDO quality scalar (λ). Lower values favor higher quality (larger file); higher favor smaller file (lower quality). Useful range ~0.25..3.0. Default 1.0.">RDO quality scalar (rdo_l)</span>
                 <input type="number" id="ktx2-uastc-rdo-l" min="0.001" max="10" step="0.01" value="1.0" />
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">RDO dict size (rdo_d)</span>
+                <span class="ktx2-label" title="UASTC RDO dictionary size in bytes, 64..65536. Larger dictionary = potentially smaller files but slower encoding and more memory. Default 4096.">RDO dict size (rdo_d)</span>
                 <input type="number" id="ktx2-uastc-rdo-d" min="64" max="65536" step="64" value="4096" />
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">RDO max smooth-block error scale</span>
+                <span class="ktx2-label" title="Maximum RDO error scale allowed on smooth blocks, 1..10. Higher values let smooth areas tolerate more error (smaller files); lower protects gradients from banding. Default 10.">RDO max smooth-block error scale</span>
                 <input type="number" id="ktx2-uastc-rdo-err" min="1" max="100" step="0.5" value="10" />
               </label>
               <label class="ktx2-field">
-                <span class="ktx2-label">RDO max smooth-block std dev</span>
+                <span class="ktx2-label" title="Standard-deviation threshold below which a block is classified as smooth for RDO purposes, 18..30. Default 18.">RDO max smooth-block std dev</span>
                 <input type="number" id="ktx2-uastc-rdo-std" min="1" max="100" step="0.5" value="18" />
               </label>
               <label class="ktx2-field ktx2-checkbox">
                 <input type="checkbox" id="ktx2-uastc-rdo-dfsm" />
-                <span class="ktx2-label">Don't favor simpler modes</span>
+                <span class="ktx2-label" title="Disable the RDO bias toward simpler UASTC block modes. May slightly improve quality at the cost of worse Zstandard ratios.">Don't favor simpler modes</span>
               </label>
             </div>
           </div>

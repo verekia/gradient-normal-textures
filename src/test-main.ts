@@ -3,6 +3,11 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 
+// Accepts a packed texture (RGB = normal, A = gradient factor) as either PNG
+// or KTX2. The sphere material samples it once as its `map` (RGB become the
+// sphere's "diffuse", then overwritten by a gradient mix using alpha) and once
+// as its `normalMap` (three.js reads .xyz as the tangent-space normal).
+
 // --- DOM ---
 
 const dropZoneWrap = document.getElementById('drop-zone-wrap')!;
@@ -26,8 +31,7 @@ const normalScaleValue = document.getElementById('normal-scale-value')!;
 const btnMatStandard = document.getElementById('btn-mat-standard')!;
 const btnMatLambert = document.getElementById('btn-mat-lambert')!;
 
-// --- Three scene (mirrors three-scene.ts, extended to accept a THREE.Texture and
-//     to gradient-remap the sampled color via Color A / Color B uniforms.) ---
+// --- Three scene ---
 
 type MaterialType = 'standard' | 'lambert';
 
@@ -41,7 +45,7 @@ let controls: OrbitControls;
 let sphere: THREE.Mesh;
 let material: THREE.MeshStandardMaterial | THREE.MeshLambertMaterial;
 let keyLight: THREE.DirectionalLight;
-let colorTexture: THREE.Texture | null = null;
+let packedTexture: THREE.Texture | null = null;
 let repeat = +texSize.value;
 let materialType: MaterialType = 'standard';
 let normalScaleVal = +normalScale.value;
@@ -56,13 +60,14 @@ function patchGradientRemap(m: THREE.Material) {
 uniform vec3 uColorB;
 void main() {`,
     );
-    // After the map is sampled into diffuseColor, remap using its luminance.
+    // After map_fragment, diffuseColor.rgb = sampled normal, diffuseColor.a =
+    // sampled gradient factor. Replace rgb with the gradient mix and reset a.
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <map_fragment>',
       `#include <map_fragment>
 #ifdef USE_MAP
-  float _ktxLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-  diffuseColor.rgb = mix(uColorA, uColorB, _ktxLum);
+  diffuseColor.rgb = mix(uColorA, uColorB, diffuseColor.a);
+  diffuseColor.a = 1.0;
 #endif`,
     );
   };
@@ -72,7 +77,10 @@ function createMaterial(type: MaterialType): THREE.MeshStandardMaterial | THREE.
   const m = type === 'lambert'
     ? new THREE.MeshLambertMaterial({ color: 0xffffff })
     : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75, metalness: 0 });
-  if (colorTexture) m.map = colorTexture;
+  if (packedTexture) {
+    m.map = packedTexture;
+    m.normalMap = packedTexture;
+  }
   m.normalScale.set(normalScaleVal, normalScaleVal);
   patchGradientRemap(m);
   return m;
@@ -132,19 +140,21 @@ function initThreeScene(container: HTMLElement) {
   resizeObserver.observe(container);
 }
 
-function setColorTextureFromKtx(tex: THREE.Texture) {
+function setPackedTexture(tex: THREE.Texture) {
   if (!renderer) return;
-  if (colorTexture) colorTexture.dispose();
-  colorTexture = tex;
-  colorTexture.colorSpace = THREE.SRGBColorSpace;
-  initTextureWrap(colorTexture);
-  material.map = colorTexture;
+  if (packedTexture) packedTexture.dispose();
+  packedTexture = tex;
+  // Raw linear reads: RGB is non-color normal data, alpha is a linear factor.
+  packedTexture.colorSpace = THREE.NoColorSpace;
+  initTextureWrap(packedTexture);
+  material.map = packedTexture;
+  material.normalMap = packedTexture;
   material.needsUpdate = true;
 }
 
 function setTextureRepeat(r: number) {
   repeat = r;
-  applyRepeatOnly(colorTexture);
+  applyRepeatOnly(packedTexture);
 }
 
 function setMaterialType(type: MaterialType) {
@@ -175,10 +185,11 @@ function setColorB(hex: string) {
   colorBUniform.value.set(hex);
 }
 
-// --- KTX2 loading ---
+// --- File loading ---
 
-const ktx2Loader = new KTX2Loader()
-  .setTranscoderPath('/basis/');
+type TextureFormat = 'PNG' | 'KTX2';
+
+const ktx2Loader = new KTX2Loader().setTranscoderPath('/basis/');
 
 let dragCounter = 0;
 
@@ -193,46 +204,73 @@ function clearError() {
 
 function updateDropZoneVisibility() {
   const dragging = dragCounter > 0;
-  const hasTexture = colorTexture != null;
+  const hasTexture = packedTexture != null;
   dropZoneWrap.classList.toggle('hidden', hasTexture && !dragging);
   loadedWrap.classList.toggle('hidden', !hasTexture || dragging);
 }
 
-function formatInfo(file: File, tex: THREE.Texture): string {
+function detectFormat(file: File): TextureFormat | null {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.ktx2')) return 'KTX2';
+  if (name.endsWith('.png') || file.type === 'image/png') return 'PNG';
+  return null;
+}
+
+function formatInfo(file: File, format: TextureFormat, tex: THREE.Texture): string {
   const img = tex.image as { width?: number; height?: number } | undefined;
   const w = img?.width ?? 0;
   const h = img?.height ?? 0;
-  const mips = (tex as unknown as { mipmaps?: unknown[] }).mipmaps?.length ?? 1;
   const sizeKb = (file.size / 1024).toFixed(1);
-  return `${file.name}<br><span class="ktx2-info-sub">${w}×${h} · ${mips} mip level${mips === 1 ? '' : 's'} · ${sizeKb} KB</span>`;
+  const extras: string[] = [`${w}×${h}`];
+  if (format === 'KTX2') {
+    const mips = (tex as unknown as { mipmaps?: unknown[] }).mipmaps?.length ?? 1;
+    extras.push(`${mips} mip level${mips === 1 ? '' : 's'}`);
+  }
+  extras.push(`${sizeKb} KB`);
+  return `<span class="format-badge">${format}</span> ${file.name}<br><span class="ktx2-info-sub">${extras.join(' · ')}</span>`;
+}
+
+async function loadKtx2Texture(file: File): Promise<THREE.Texture> {
+  if (renderer) ktx2Loader.detectSupport(renderer);
+  const buffer = await file.arrayBuffer();
+  const url = URL.createObjectURL(new Blob([buffer], { type: 'image/ktx2' }));
+  try {
+    return await ktx2Loader.loadAsync(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function loadPngTexture(file: File): Promise<THREE.Texture> {
+  const url = URL.createObjectURL(file);
+  try {
+    const tex = await new THREE.TextureLoader().loadAsync(url);
+    return tex;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 async function handleFile(file: File) {
   clearError();
-  if (!file.name.toLowerCase().endsWith('.ktx2')) {
-    showError('Unsupported file type. Please use a .ktx2 file.');
+  const format = detectFormat(file);
+  if (!format) {
+    showError('Unsupported file type. Please use a .png or .ktx2 file.');
     return;
   }
 
   // KTX2Loader requires a WebGL renderer to detect supported GPU formats.
   initThreeScene(threeContainer);
-  if (renderer) ktx2Loader.detectSupport(renderer);
 
   try {
-    const buffer = await file.arrayBuffer();
-    const url = URL.createObjectURL(new Blob([buffer], { type: 'image/ktx2' }));
-    try {
-      const tex = await ktx2Loader.loadAsync(url);
-      setColorTextureFromKtx(tex);
-      sectionGradient.classList.remove('hidden');
-      loadedInfo.innerHTML = formatInfo(file, tex);
-      updateDropZoneVisibility();
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    const tex = format === 'KTX2' ? await loadKtx2Texture(file) : await loadPngTexture(file);
+    setPackedTexture(tex);
+    sectionGradient.classList.remove('hidden');
+    loadedInfo.innerHTML = formatInfo(file, format, tex);
+    updateDropZoneVisibility();
   } catch (err) {
     console.error(err);
-    showError(`Error loading KTX2: ${(err as Error).message}`);
+    showError(`Error loading ${format}: ${(err as Error).message}`);
   }
 }
 

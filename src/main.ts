@@ -75,6 +75,7 @@ const sectionKtx2 = document.getElementById('section-ktx2')!;
 const ktx2CodecEtc1s = document.getElementById('ktx2-codec-etc1s') as HTMLButtonElement;
 const ktx2CodecUastc = document.getElementById('ktx2-codec-uastc') as HTMLButtonElement;
 const ktx2Mipmaps = document.getElementById('ktx2-mipmaps') as HTMLInputElement;
+const ktx2FlipY = document.getElementById('ktx2-flipy') as HTMLInputElement;
 const ktx2Zstd = document.getElementById('ktx2-zstd') as HTMLInputElement;
 const ktx2ZstdValue = document.getElementById('ktx2-zstd-value')!;
 const ktx2Etc1sOpts = document.getElementById('ktx2-etc1s-opts')!;
@@ -102,7 +103,7 @@ const ktx2UastcRdoDfsm = document.getElementById('ktx2-uastc-rdo-dfsm') as HTMLI
 
 type Ktx2Target = 'luminance' | 'packed';
 const ktx2Badges = Array.from(document.querySelectorAll<HTMLButtonElement>('.ktx2-download-badge'));
-let ktx2Codec: 'etc1s' | 'uastc' = 'etc1s';
+let ktx2Codec: 'etc1s' | 'uastc' = 'uastc';
 
 // State
 let currentResult: ProcessedImage | null = null;
@@ -499,6 +500,7 @@ function readKtx2Options(target: Ktx2Target): Ktx2EncodeOptions {
     // (normal.X in R, normal.Y in A) which discards the blue channel and the
     // luminance in A. Packed textures need all four channels preserved.
     srgb: !isPacked,
+    flipY: ktx2FlipY.checked,
   };
 }
 

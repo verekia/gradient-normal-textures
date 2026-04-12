@@ -401,6 +401,33 @@ button:hover {
 
 .ktx2-summary-title { font-weight: 500; }
 
+.codec-explainer {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  background: #1b1b1b;
+  border-left: 3px solid #2a4a6a;
+  border-radius: 3px;
+  color: #bbb;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.codec-explainer b {
+  color: #d0e4ff;
+}
+
+.ktx2-label[title] {
+  text-decoration: underline dashed #666;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.ktx2-label[title]:hover {
+  text-decoration-color: #aaa;
+  color: #e5e5e5;
+}
+
 .ktx2-body {
   padding: 0.75rem 0.9rem 1rem;
   border-top: 1px solid #2a2a2a;
@@ -537,7 +564,7 @@ button:hover {
 
 .ktx2-badge-label { line-height: 1; }
 
-/* ktx.html — loaded-file info card */
+/* test.html — loaded-file info card */
 #loaded-info {
   min-width: 200px;
   padding: 0.6rem 0.8rem;
@@ -552,4 +579,18 @@ button:hover {
 .ktx2-info-sub {
   color: #888;
   font-size: 0.78rem;
+}
+
+.format-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  margin-right: 0.3rem;
+  background: #2a4a6a;
+  color: #d0e4ff;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: baseline;
 }
