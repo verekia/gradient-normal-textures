@@ -20,8 +20,55 @@ body {
 h1 {
   font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
   color: #f0f0f0;
+}
+
+.page-link {
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-link a {
+  color: #88aaff;
+  text-decoration: none;
+}
+
+.page-link a:hover {
+  text-decoration: underline;
+}
+
+#tiled-heading {
+  margin-top: 1.5rem;
+}
+
+#clamp-controls {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+#clamp-controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #ccc;
+}
+
+#clamp-controls .clamp-label {
+  min-width: 5.5rem;
+}
+
+#clamp-controls input[type="range"] {
+  width: 180px;
+}
+
+#clamp-controls .clamp-value {
+  min-width: 3rem;
+  font-variant-numeric: tabular-nums;
+  color: #aaa;
 }
 
 h2 {

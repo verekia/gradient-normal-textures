@@ -3,15 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Texture Gradient Map</title>
+    <title>PCA Texture Gradient Map</title>
   </head>
   <body>
     <div id="app">
-      <h1>Texture Gradient Map</h1>
+      <h1>Texture Gradient Map (PCA)</h1>
+      <p class="page-link"><a href="/">← Luminance version</a></p>
 
       <!-- 1. Drop zones + original previews -->
       <div id="drop-row">
-        <div id="drop-zone-wrap">
+        <div>
           <h2>Texture</h2>
           <div id="drop-zone" class="drop-zone" tabindex="0">
             <p>Drop a texture here or click to select.</p>
@@ -23,7 +24,7 @@
           <h2>Original</h2>
           <canvas id="canvas-original"></canvas>
         </div>
-        <div id="drop-zone-normal-wrap">
+        <div>
           <h2>Normal Map</h2>
           <div id="drop-zone-normal" class="drop-zone" tabindex="0">
             <p>Drop a normal map here or click to select.</p>
@@ -40,28 +41,37 @@
 
       <!-- 2. Grayscale -->
       <section id="section-grayscale" class="hidden">
-        <div id="clamp-controls">
-          <label>
-            <span class="clamp-label">Dark clamp</span>
-            <input type="range" id="clamp-low" min="0" max="25" step="0.1" value="0.1" />
-            <span class="clamp-value" id="clamp-low-value">0.1%</span>
-          </label>
-          <label>
-            <span class="clamp-label">Light clamp</span>
-            <input type="range" id="clamp-high" min="0" max="25" step="0.1" value="0.1" />
-            <span class="clamp-value" id="clamp-high-value">0.1%</span>
-          </label>
-        </div>
         <div id="images-row">
           <div>
             <h2>Luminance</h2>
             <canvas id="canvas-grayscale-lum"></canvas>
           </div>
+          <div>
+            <h2>PCA</h2>
+            <canvas id="canvas-grayscale"></canvas>
+          </div>
           <div id="packed-lum-wrap" class="hidden">
-            <h2>Packed</h2>
+            <h2>Packed Luminance</h2>
             <canvas id="canvas-packed-lum" class="checkerboard"></canvas>
+            <button id="btn-download-packed-lum">Download packed (lum) PNG</button>
+          </div>
+          <div id="packed-pca-wrap" class="hidden">
+            <h2>Packed PCA</h2>
+            <canvas id="canvas-packed-pca" class="checkerboard"></canvas>
+            <button id="btn-download-packed-pca">Download packed (PCA) PNG</button>
           </div>
         </div>
+        <div id="endpoints">
+          <div class="endpoint">
+            <span class="swatch" id="swatch-dark"></span>
+            <span>Extracted dark: <code id="dark-hex"></code></span>
+          </div>
+          <div class="endpoint">
+            <span class="swatch" id="swatch-light"></span>
+            <span>Extracted light: <code id="light-hex"></code></span>
+          </div>
+        </div>
+        <button id="btn-download-grayscale">Download grayscale PNG</button>
       </section>
 
       <!-- 4. Gradient mapped output -->
@@ -69,21 +79,34 @@
         <div id="color-pickers">
           <label>
             Color A (dark)
-            <input type="color" id="picker-dark" value="#000000" />
+            <input type="color" id="picker-dark" />
           </label>
           <label>
             Color B (light)
-            <input type="color" id="picker-light" value="#ffffff" />
+            <input type="color" id="picker-light" />
           </label>
         </div>
-        <div>
-          <h2>Luminance</h2>
-          <canvas id="canvas-luminance"></canvas>
+        <div id="comparison-row">
+          <div>
+            <h2>Luminance</h2>
+            <canvas id="canvas-luminance"></canvas>
+          </div>
+          <div>
+            <h2>PCA</h2>
+            <canvas id="canvas-pca-single"></canvas>
+          </div>
         </div>
-        <h2 id="tiled-heading">Tiled</h2>
+        <div id="tiled-header">
+          <h2>Tiled</h2>
+          <div id="tiled-toggle">
+            <button id="btn-tiled-lum" class="toggle-btn">Luminance</button>
+            <button id="btn-tiled-pca" class="toggle-btn active">PCA</button>
+          </div>
+        </div>
         <canvas id="canvas-gradient"></canvas>
+        <button id="btn-download-gradient">Download recolored PNG</button>
       </section>
     </div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/pca-main.ts"></script>
   </body>
 </html>

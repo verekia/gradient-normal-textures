@@ -3,16 +3,15 @@ import {
   loadImage,
   getPixelData,
   processPixels,
-  applyLuminanceClamp,
   buildGrayscaleImage,
   buildGradientMappedImage,
   buildChannelPackedImage,
   imageDataToCanvas,
+  imageDataToPngBlob,
   type ProcessedImage,
-} from './process';
+} from './pca-process';
 
 // DOM elements — texture drop
-const dropZoneWrap = document.getElementById('drop-zone-wrap')!;
 const dropZone = document.getElementById('drop-zone')!;
 const fileInput = document.getElementById('file-input') as HTMLInputElement;
 const errorMessage = document.getElementById('error-message')!;
@@ -20,7 +19,6 @@ const originalWrap = document.getElementById('original-wrap')!;
 const canvasOriginal = document.getElementById('canvas-original') as HTMLCanvasElement;
 
 // DOM elements — normal map drop
-const dropZoneNormalWrap = document.getElementById('drop-zone-normal-wrap')!;
 const dropZoneNormal = document.getElementById('drop-zone-normal')!;
 const fileInputNormal = document.getElementById('file-input-normal') as HTMLInputElement;
 const normalWrap = document.getElementById('normal-wrap')!;
@@ -28,57 +26,36 @@ const canvasNormal = document.getElementById('canvas-normal') as HTMLCanvasEleme
 
 const sectionGrayscale = document.getElementById('section-grayscale')!;
 const canvasGrayscaleLum = document.getElementById('canvas-grayscale-lum') as HTMLCanvasElement;
+const canvasGrayscale = document.getElementById('canvas-grayscale') as HTMLCanvasElement;
 const packedLumWrap = document.getElementById('packed-lum-wrap')!;
+const packedPcaWrap = document.getElementById('packed-pca-wrap')!;
 const canvasPackedLum = document.getElementById('canvas-packed-lum') as HTMLCanvasElement;
-const clampLow = document.getElementById('clamp-low') as HTMLInputElement;
-const clampHigh = document.getElementById('clamp-high') as HTMLInputElement;
-const clampLowValue = document.getElementById('clamp-low-value')!;
-const clampHighValue = document.getElementById('clamp-high-value')!;
+const canvasPackedPca = document.getElementById('canvas-packed-pca') as HTMLCanvasElement;
+const swatchDark = document.getElementById('swatch-dark')!;
+const swatchLight = document.getElementById('swatch-light')!;
+const darkHexEl = document.getElementById('dark-hex')!;
+const lightHexEl = document.getElementById('light-hex')!;
+const btnDownloadGrayscale = document.getElementById('btn-download-grayscale')!;
+const btnDownloadPackedLum = document.getElementById('btn-download-packed-lum')!;
+const btnDownloadPackedPca = document.getElementById('btn-download-packed-pca')!;
 
 const sectionGradient = document.getElementById('section-gradient')!;
 const pickerDark = document.getElementById('picker-dark') as HTMLInputElement;
 const pickerLight = document.getElementById('picker-light') as HTMLInputElement;
 const canvasLuminance = document.getElementById('canvas-luminance') as HTMLCanvasElement;
+const canvasPcaSingle = document.getElementById('canvas-pca-single') as HTMLCanvasElement;
+const btnTiledPca = document.getElementById('btn-tiled-pca')!;
+const btnTiledLum = document.getElementById('btn-tiled-lum')!;
 const canvasGradient = document.getElementById('canvas-gradient') as HTMLCanvasElement;
+const btnDownloadGradient = document.getElementById('btn-download-gradient')!;
 
 // State
 let currentResult: ProcessedImage | null = null;
+let fullResGrayscaleImageData: ImageData | null = null;
+let tiledMode: 'pca' | 'luminance' = 'pca';
 let normalMapData: Uint8ClampedArray | null = null;
 let normalMapWidth = 0;
 let normalMapHeight = 0;
-let dragCounter = 0;
-
-function updateDropZoneVisibility() {
-  const dragging = dragCounter > 0;
-  const hasTexture = currentResult != null;
-  const hasNormal = normalMapData != null;
-  dropZoneWrap.classList.toggle('hidden', hasTexture && !dragging);
-  dropZoneNormalWrap.classList.toggle('hidden', hasNormal && !dragging);
-  originalWrap.classList.toggle('hidden', !hasTexture || dragging);
-  normalWrap.classList.toggle('hidden', !hasNormal || dragging);
-}
-
-window.addEventListener('dragenter', (e) => {
-  if (!e.dataTransfer?.types.includes('Files')) return;
-  dragCounter++;
-  updateDropZoneVisibility();
-});
-
-window.addEventListener('dragleave', (e) => {
-  if (!e.dataTransfer?.types.includes('Files')) return;
-  dragCounter = Math.max(0, dragCounter - 1);
-  updateDropZoneVisibility();
-});
-
-window.addEventListener('dragover', (e) => {
-  e.preventDefault();
-});
-
-window.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dragCounter = 0;
-  updateDropZoneVisibility();
-});
 
 // --- Drop zone handling (texture) ---
 
@@ -131,6 +108,7 @@ fileInputNormal.addEventListener('change', () => {
 function showError(msg: string) {
   errorMessage.textContent = msg;
   errorMessage.classList.remove('hidden');
+  originalWrap.classList.add('hidden');
   sectionGrayscale.classList.add('hidden');
   sectionGradient.classList.add('hidden');
 }
@@ -152,7 +130,7 @@ async function handleNormalMap(file: File) {
     normalMapHeight = height;
 
     drawToDisplayCanvas(canvasNormal, img, width, height);
-    updateDropZoneVisibility();
+    normalWrap.classList.remove('hidden');
 
     updateChannelPacked();
   } catch {
@@ -163,11 +141,13 @@ async function handleNormalMap(file: File) {
 function updateChannelPacked() {
   if (!currentResult || !normalMapData) {
     packedLumWrap.classList.add('hidden');
+    packedPcaWrap.classList.add('hidden');
     return;
   }
 
   if (normalMapWidth !== currentResult.width || normalMapHeight !== currentResult.height) {
     packedLumWrap.classList.add('hidden');
+    packedPcaWrap.classList.add('hidden');
     return;
   }
 
@@ -177,6 +157,11 @@ function updateChannelPacked() {
   const packedLumCanvas = imageDataToCanvas(packedLumImageData);
   drawCanvasToDisplayCanvas(canvasPackedLum, packedLumCanvas, width, height);
   packedLumWrap.classList.remove('hidden');
+
+  const packedPcaImageData = buildChannelPackedImage(normalMapData, currentResult.grayscaleMap, width, height);
+  const packedPcaCanvas = imageDataToCanvas(packedPcaImageData);
+  drawCanvasToDisplayCanvas(canvasPackedPca, packedPcaCanvas, width, height);
+  packedPcaWrap.classList.remove('hidden');
 }
 
 async function handleFile(file: File) {
@@ -192,10 +177,13 @@ async function handleFile(file: File) {
     const img = await loadImage(file);
     const { data, width, height } = getPixelData(img);
 
+    // Show original next to drop zone
     drawToDisplayCanvas(canvasOriginal, img, width, height);
+    originalWrap.classList.remove('hidden');
     sectionGrayscale.classList.add('hidden');
     sectionGradient.classList.add('hidden');
 
+    // Process
     const result = processPixels(data, width, height);
 
     if (typeof result === 'string') {
@@ -205,14 +193,34 @@ async function handleFile(file: File) {
 
     currentResult = result;
 
-    // Apply current clamp values (file may be loaded after user moved sliders)
-    applyLuminanceClamp(result, +clampLow.value / 100, +clampHigh.value / 100);
+    // Build and draw grayscale (Luminance + PCA)
+    fullResGrayscaleImageData = buildGrayscaleImage(result);
+    const gsCanvas = imageDataToCanvas(fullResGrayscaleImageData);
+    drawCanvasToDisplayCanvas(canvasGrayscale, gsCanvas, width, height);
 
-    renderLuminanceOutputs();
+    const lumGsImageData = buildGrayscaleImage(result, result.luminanceMap);
+    const lumGsCanvas = imageDataToCanvas(lumGsImageData);
+    drawCanvasToDisplayCanvas(canvasGrayscaleLum, lumGsCanvas, width, height);
+
+    // Show endpoint colors
+    swatchDark.style.backgroundColor = result.darkHex;
+    swatchLight.style.backgroundColor = result.lightHex;
+    darkHexEl.textContent = result.darkHex;
+    lightHexEl.textContent = result.lightHex;
 
     sectionGrayscale.classList.remove('hidden');
+
+    // Update channel-packed previews if normal map is loaded
+    updateChannelPacked();
+
+    // Set color picker defaults
+    pickerDark.value = result.darkHex;
+    pickerLight.value = result.lightHex;
+
+    // Build initial gradient mapped image
+    updateGradientMap();
+
     sectionGradient.classList.remove('hidden');
-    updateDropZoneVisibility();
   } catch (err) {
     showError(`Error processing image: ${(err as Error).message}`);
   }
@@ -256,10 +264,18 @@ function updateGradientMap() {
   const colorA = pickerDark.value;
   const colorB = pickerLight.value;
 
-  const lumImageData = buildGradientMappedImage(currentResult, colorA, colorB);
+  // Luminance-based gradient map (single tile)
+  const lumImageData = buildGradientMappedImage(currentResult, colorA, colorB, currentResult.luminanceMap);
   const lumSrcCanvas = imageDataToCanvas(lumImageData);
   drawCanvasToDisplayCanvas(canvasLuminance, lumSrcCanvas, currentResult.width, currentResult.height);
 
+  // PCA-based gradient map (single tile)
+  const pcaImageData = buildGradientMappedImage(currentResult, colorA, colorB);
+  const pcaSrcCanvas = imageDataToCanvas(pcaImageData);
+  drawCanvasToDisplayCanvas(canvasPcaSingle, pcaSrcCanvas, currentResult.width, currentResult.height);
+
+  // 3x3 tiled (based on toggle)
+  const tileSrc = tiledMode === 'pca' ? pcaSrcCanvas : lumSrcCanvas;
   const { width: fullW, height: fullH } = currentResult;
   const [displayW, displayH] = getDisplayDimensions(fullW, fullH);
   const tilesX = 3;
@@ -271,7 +287,7 @@ function updateGradientMap() {
   const ctx = canvasGradient.getContext('2d')!;
   for (let y = 0; y < tilesY; y++) {
     for (let x = 0; x < tilesX; x++) {
-      ctx.drawImage(lumSrcCanvas, x * fullW, y * fullH);
+      ctx.drawImage(tileSrc, x * fullW, y * fullH);
     }
   }
 }
@@ -279,25 +295,62 @@ function updateGradientMap() {
 pickerDark.addEventListener('input', updateGradientMap);
 pickerLight.addEventListener('input', updateGradientMap);
 
-function renderLuminanceOutputs() {
-  if (!currentResult) return;
-  const { width, height } = currentResult;
-
-  const lumGsImageData = buildGrayscaleImage(currentResult);
-  const lumGsCanvas = imageDataToCanvas(lumGsImageData);
-  drawCanvasToDisplayCanvas(canvasGrayscaleLum, lumGsCanvas, width, height);
-
-  updateChannelPacked();
+btnTiledPca.addEventListener('click', () => {
+  tiledMode = 'pca';
+  btnTiledPca.classList.add('active');
+  btnTiledLum.classList.remove('active');
   updateGradientMap();
-}
+});
 
-function onClampChange() {
-  clampLowValue.textContent = `${(+clampLow.value).toFixed(1)}%`;
-  clampHighValue.textContent = `${(+clampHigh.value).toFixed(1)}%`;
+btnTiledLum.addEventListener('click', () => {
+  tiledMode = 'luminance';
+  btnTiledLum.classList.add('active');
+  btnTiledPca.classList.remove('active');
+  updateGradientMap();
+});
+
+// --- Download buttons ---
+
+btnDownloadGrayscale.addEventListener('click', () => {
+  if (!fullResGrayscaleImageData) return;
+  const canvas = imageDataToCanvas(fullResGrayscaleImageData);
+  downloadCanvas(canvas, 'grayscale.png');
+});
+
+btnDownloadGradient.addEventListener('click', () => {
   if (!currentResult) return;
-  applyLuminanceClamp(currentResult, +clampLow.value / 100, +clampHigh.value / 100);
-  renderLuminanceOutputs();
+  const colorA = pickerDark.value;
+  const colorB = pickerLight.value;
+  const map = tiledMode === 'luminance' ? currentResult.luminanceMap : undefined;
+  const imageData = buildGradientMappedImage(currentResult, colorA, colorB, map);
+  const canvas = imageDataToCanvas(imageData);
+  downloadCanvas(canvas, 'recolored.png');
+});
+
+function downloadCanvas(canvas: HTMLCanvasElement, filename: string) {
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
-clampLow.addEventListener('input', onClampChange);
-clampHigh.addEventListener('input', onClampChange);
+async function downloadImageDataAsRawPng(imageData: ImageData, filename: string) {
+  const blob = await imageDataToPngBlob(imageData);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+btnDownloadPackedLum.addEventListener('click', async () => {
+  if (!currentResult || !normalMapData) return;
+  const imageData = buildChannelPackedImage(normalMapData, currentResult.luminanceMap, currentResult.width, currentResult.height);
+  await downloadImageDataAsRawPng(imageData, 'packed-luminance.png');
+});
+
+btnDownloadPackedPca.addEventListener('click', async () => {
+  if (!currentResult || !normalMapData) return;
+  const imageData = buildChannelPackedImage(normalMapData, currentResult.grayscaleMap, currentResult.width, currentResult.height);
+  await downloadImageDataAsRawPng(imageData, 'packed-pca.png');
+});
