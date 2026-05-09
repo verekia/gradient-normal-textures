@@ -1,12 +1,13 @@
 {
-  "name": "pca-texture",
+  "name": "gradient-normal-textures",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "serve out",
+    "postinstall": "next typegen",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
@@ -16,14 +17,24 @@
     "all": "bun run format:check && bun run lint && bun run typecheck && bun run warden"
   },
   "dependencies": {
+    "next": "16.2.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "three": "^0.183.2"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "4.2.2",
+    "@types/node": "25.5.2",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@types/three": "^0.183.1",
     "@verekia/warden": "0.0.3",
+    "babel-plugin-react-compiler": "1.0.0",
     "oxfmt": "0.48.0",
     "oxlint": "1.63.0",
-    "typescript": "~6.0.2",
-    "vite": "^8.0.4"
+    "postcss": "8.5.8",
+    "serve": "14.2.6",
+    "tailwindcss": "4.2.2",
+    "typescript": "6.0.2"
   }
 }
