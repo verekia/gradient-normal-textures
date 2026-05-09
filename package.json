@@ -1,7 +1,7 @@
 {
   "name": "pca-texture",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,16 +12,18 @@
     "lint:fix": "oxlint --fix .",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "all": "bun run format:check && bun run lint && bun run typecheck"
+    "warden": "warden",
+    "all": "bun run format:check && bun run lint && bun run typecheck && bun run warden"
+  },
+  "dependencies": {
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@types/three": "^0.183.1",
+    "@verekia/warden": "0.0.3",
     "oxfmt": "0.48.0",
     "oxlint": "1.63.0",
     "typescript": "~6.0.2",
     "vite": "^8.0.4"
-  },
-  "dependencies": {
-    "three": "^0.183.2"
   }
 }

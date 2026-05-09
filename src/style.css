@@ -61,7 +61,7 @@ h1 {
   min-width: 5.5rem;
 }
 
-#clamp-controls input[type="range"] {
+#clamp-controls input[type='range'] {
   width: 180px;
 }
 
@@ -90,7 +90,7 @@ h1 {
   min-width: 5.5rem;
 }
 
-#three-controls input[type="range"] {
+#three-controls input[type='range'] {
   width: 180px;
 }
 
@@ -230,7 +230,6 @@ section {
   gap: 2rem;
 }
 
-
 /* Canvases */
 canvas {
   display: block;
@@ -241,12 +240,14 @@ canvas {
 
 canvas.checkerboard {
   background-image:
-    linear-gradient(45deg, #444 25%, transparent 25%),
-    linear-gradient(-45deg, #444 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #444 75%),
-    linear-gradient(-45deg, transparent 75%, #444 75%);
+    linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%);
   background-size: 16px 16px;
-  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
 }
 
 /* Endpoints */
@@ -295,7 +296,7 @@ code {
   color: #ccc;
 }
 
-#color-pickers input[type="color"] {
+#color-pickers input[type='color'] {
   width: 40px;
   height: 32px;
   border: 1px solid #555;
@@ -384,10 +385,12 @@ button:hover {
   gap: 0.5rem;
 }
 
-#ktx2-details > summary::-webkit-details-marker { display: none; }
+#ktx2-details > summary::-webkit-details-marker {
+  display: none;
+}
 
 #ktx2-details > summary::before {
-  content: "▶";
+  content: '▶';
   font-size: 0.7rem;
   color: #888;
   transition: transform 0.15s;
@@ -399,7 +402,9 @@ button:hover {
   transform: rotate(90deg);
 }
 
-.ktx2-summary-title { font-weight: 500; }
+.ktx2-summary-title {
+  font-weight: 500;
+}
 
 .codec-explainer {
   margin: 0;
@@ -461,17 +466,19 @@ button:hover {
   gap: 0.4rem;
 }
 
-.ktx2-field.ktx2-checkbox input[type="checkbox"] {
+.ktx2-field.ktx2-checkbox input[type='checkbox'] {
   margin: 0;
 }
 
-.ktx2-label { color: #bbb; }
+.ktx2-label {
+  color: #bbb;
+}
 
-.ktx2-field input[type="range"] {
+.ktx2-field input[type='range'] {
   width: 140px;
 }
 
-.ktx2-field input[type="number"] {
+.ktx2-field input[type='number'] {
   width: 90px;
   background: #1b1b1b;
   border: 1px solid #444;
@@ -533,7 +540,10 @@ button:hover {
   cursor: pointer;
   opacity: 0;
   transform: translateY(-2px);
-  transition: opacity 0.12s ease, transform 0.12s ease, background-color 0.12s;
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease,
+    background-color 0.12s;
   backdrop-filter: blur(2px);
   pointer-events: none;
 }
@@ -562,7 +572,9 @@ button:hover {
   height: 12px;
 }
 
-.ktx2-badge-label { line-height: 1; }
+.ktx2-badge-label {
+  line-height: 1;
+}
 
 /* test.html — loaded-file info card */
 #loaded-info {
