@@ -114,7 +114,10 @@ export const MainView = () => {
 
               <div id="ktx2-etc1s-opts" className="ktx2-opts hidden">
                 <label className="ktx2-field">
-                  <span className="ktx2-label" title="ETC1S encoder effort, 0..6. Higher = slower, better quality. Default 2.">
+                  <span
+                    className="ktx2-label"
+                    title="ETC1S encoder effort, 0..6. Higher = slower, better quality. Default 2."
+                  >
                     Compression level (clevel)
                   </span>
                   <input type="range" id="ktx2-etc1s-clevel" min="0" max="6" step="1" defaultValue="2" />
