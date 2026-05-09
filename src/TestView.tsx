@@ -29,12 +29,7 @@ export const TestView = () => {
             <div id="drop-zone" className="drop-zone" tabIndex={0}>
               <p>Drop a .png or .ktx2 packed texture (normal in RGB, gradient in alpha).</p>
               <p className="formats">PNG, KTX2</p>
-              <input
-                type="file"
-                id="file-input"
-                className="file-input"
-                accept=".png,image/png,.ktx2,image/ktx2"
-              />
+              <input type="file" id="file-input" className="file-input" accept=".png,image/png,.ktx2,image/ktx2" />
             </div>
           </div>
           <div id="loaded-wrap" className="hidden">
