@@ -25,9 +25,10 @@
         "allowTernary": true
       }
     ],
-    "typescript/no-non-null-assertion": "warn",
+    "typescript/no-non-null-assertion": "off",
     "unicorn/no-useless-spread": "warn",
-    "unicorn/consistent-function-scoping": "warn"
+    "unicorn/consistent-function-scoping": "warn",
+    "import/no-unassigned-import": "off"
   },
-  "ignorePatterns": ["node_modules", "dist"]
+  "ignorePatterns": ["node_modules", "dist", "public"]
 }

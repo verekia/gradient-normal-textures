@@ -33,14 +33,14 @@ export function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
-    img.onload = () => {
+    img.addEventListener('load', () => {
       URL.revokeObjectURL(url)
       resolve(img)
-    }
-    img.onerror = () => {
+    })
+    img.addEventListener('error', () => {
       URL.revokeObjectURL(url)
       reject(new Error('Failed to load image'))
-    }
+    })
     img.src = url
   })
 }

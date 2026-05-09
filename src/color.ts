@@ -79,11 +79,12 @@ export function hexToRgb(hex: string): [number, number, number] {
   return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]
 }
 
+const toHex = (c: number) =>
+  Math.max(0, Math.min(255, Math.round(c)))
+    .toString(16)
+    .padStart(2, '0')
+
 /** Convert [r, g, b] in [0,255] to #RRGGBB hex string */
 export function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (c: number) =>
-    Math.max(0, Math.min(255, Math.round(c)))
-      .toString(16)
-      .padStart(2, '0')
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 }
